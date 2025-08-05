@@ -4,6 +4,24 @@ const User = require('../models/User');
 // Sample user data for testing
 const userData = [
   {
+    name: 'Admin User',
+    countryCode: '+1',
+    phone: '9999999999',
+    email: 'admin@jivbook.com',
+    emailVerified: true,
+    username: 'admin',
+    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80',
+    address: 'Admin Office, Silicon Valley, CA 94000',
+    latitude: 37.4419,
+    longitude: -122.1430,
+    preferencePetType: 'All Pets',
+    preferenceCategories: 'All Categories',
+    isAdmin: true,
+    isVerified: true,
+    bio: 'Administrator of Jivbook platform',
+    website: 'https://jivbook.com'
+  },
+  {
     name: 'John Doe',
     countryCode: '+1',
     phone: '1234567890',
