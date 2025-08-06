@@ -60,8 +60,8 @@ Retrieve all pet categories with optional filters, search, sorting, and paginati
         "_id": "689184f22e52d8218db6e6d2",
         "name": "Dogs",
         "description": "Loyal and friendly companions, perfect for families and individuals alike",
-        "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
-        "icon": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80",
+        "image": "/uploads/pet-categories/category_1_1704067200000.jpg",
+        "icon": "/uploads/pet-categories/icon_1_1704067200000.jpg",
         "isActive": true,
         "order": 1,
         "isDairyPet": false,
@@ -103,8 +103,8 @@ Retrieve a specific pet category by its slug.
     "_id": "689184f22e52d8218db6e6d2",
     "name": "Dogs",
     "description": "Loyal and friendly companions",
-    "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
-    "icon": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80",
+    "image": "/uploads/pet-categories/category_1_1704067200000.jpg",
+    "icon": "/uploads/pet-categories/icon_1_1704067200000.jpg",
     "slug": "dogs",
     "breedCount": 2
   }

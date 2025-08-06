@@ -111,21 +111,42 @@ Get current user's profile (requires authentication)
 }
 ```
 
+### PUT /api/profile/image
+Upload/Update profile image (requires authentication)
+
+**Request Body (form-data):**
+```
+profileImage: "file (required)"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Profile image updated successfully",
+  "data": {
+    "profileImage": "/uploads/profile-1640995200-123456789.jpg"
+  }
+}
+```
+
 ### PUT /api/profile
 Update current user's profile (requires authentication)
 
-**Request Body (form-data for image upload):**
-```
-name: "string (optional)"
-email: "string (optional)"
-phone: "string (optional)"
-bio: "string (optional)"
-website: "string (optional)"
-address: "string (optional)"
-latitude: "number (optional)"
-longitude: "number (optional)"
-isPrivate: "boolean (optional)"
-profileImage: "file (optional)"
+**Request Body (JSON):**
+```json
+{
+  "id": "user id (required)",
+  "name": "string (optional)",
+  "email": "string (optional)",
+  "phone": "string (optional)",
+  "bio": "string (optional)",
+  "website": "string (optional)",
+  "address": "string (optional)",
+  "latitude": "number (optional)",
+  "longitude": "number (optional)",
+  "isPrivate": "boolean (optional)"
+}
 ```
 
 ---
@@ -433,11 +454,11 @@ Create new post (requires authentication)
 **Request Body (form-data):**
 ```
 caption: "string (required)"
-media: "file[] (optional, max 10 files)"
-location: "string (optional)"
+media: "file[] (required for media posts, max 10 files - images/videos)"
+locationName: "string (optional)"
 latitude: "number (optional)"
 longitude: "number (optional)"
-tags: "comma-separated string (optional)"
+tags: "comma-separated string (optional) - hashtags without #"
 mentions: "comma-separated user IDs (optional)"
 ```
 
@@ -694,13 +715,19 @@ Get all pets with advanced filtering and pagination
         "healthStatus": "excellent",
         "images": [
           {
-            "url": "image url",
-            "filename": "filename",
-            "size": 1024,
+            "url": "/uploads/pet-1640995200-123456789.jpg",
+            "filename": "pet-1640995200-123456789.jpg",
+            "size": 1024000,
             "isMain": true,
             "uploadedAt": "2025-01-01T00:00:00.000Z"
           }
         ],
+        "audio": {
+          "url": "/uploads/pet-audio-1640995200-123456789.mp3",
+          "filename": "pet-audio-1640995200-123456789.mp3",
+          "size": 512000,
+          "uploadedAt": "2025-01-01T00:00:00.000Z"
+        },
         "address": "Pet Address",
         "latitude": 28.6139,
         "longitude": 77.2090,
@@ -751,9 +778,21 @@ medicalHistory: "string (optional)"
 address: "string (required)"
 latitude: "number (required)"
 longitude: "number (required)"
-owner: "ObjectId (required)"
-images: "file[] (optional, multiple images)"
-audioUrl: "string (optional)"
+images: "file[] (required, multiple images - max 10)"
+audio: "file (optional, single audio file)"
+
+// Additional fields for dairy pets:
+dairyDetails[milkProduction][value]: "number (optional)"
+dairyDetails[milkProduction][unit]: "string (optional)"
+dairyDetails[lactationPeriod]: "string (optional)"
+dairyDetails[feedingRequirements]: "string (optional)"
+
+// Additional fields for companion pets:
+companionDetails[isTrained]: "boolean (optional)"
+companionDetails[trainingDetails]: "string (optional)"
+companionDetails[temperament]: "string (friendly/aggressive/calm/playful/shy, optional)"
+companionDetails[goodWithKids]: "boolean (optional)"
+companionDetails[goodWithPets]: "boolean (optional)"
 ```
 
 ### PUT /api/pets/:id
@@ -1068,7 +1107,7 @@ Get chat messages (requires authentication)
         },
         "messageType": "text",
         "content": "Message content",
-        "mediaUrl": null,
+        "mediaUrl": "chat-1640995200-123456789.jpg",
         "readBy": ["user id"],
         "status": "sent",
         "parentMessage": null,
@@ -1128,8 +1167,29 @@ Send media message (requires authentication)
 **Request Body (form-data):**
 ```
 content: "message caption (optional)"
-media: "file (required)"
-messageType: "image/video/audio"
+media: "file (required - image/video only, max 50MB)"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Media message sent successfully",
+  "data": {
+    "_id": "message id",
+    "chat": "chat id",
+    "sender": {
+      "_id": "sender id",
+      "name": "Sender Name",
+      "profileImage": "profile image url"
+    },
+    "messageType": "image",
+    "content": "Sent image",
+    "mediaUrl": "chat-1640995200-123456789.jpg",
+    "status": "sent",
+    "createdAt": "2025-01-01T00:00:00.000Z"
+  }
+}
 ```
 
 ### PUT /api/chat/:chatId/mark-read
@@ -1293,23 +1353,45 @@ All APIs return consistent error responses:
 
 ## File Upload Guidelines
 
+### Important Notes:
+- **NO URL INPUTS**: All image/video/audio fields now accept only multipart file uploads
+- **Files are stored locally**: Files are saved to server filesystem with unique filenames
+- **Auto-generated paths**: System automatically generates URLs like `/uploads/filename.ext`
+- **File management**: Old files are automatically deleted when updated/removed
+
 ### Supported Formats:
-- **Images**: JPG, JPEG, PNG, GIF
-- **Videos**: MP4, AVI, MOV
-- **Audio**: MP3, WAV
+- **Images**: JPG, JPEG, PNG, GIF, WEBP
+- **Videos**: MP4, AVI, MOV, MKV
+- **Audio**: MP3, WAV, AAC, OGG
 
 ### Size Limits:
-- **Images**: 5MB per file
-- **Videos**: 100MB per file
-- **Audio**: 10MB per file
+- **Images**: 10MB per file
+- **Videos**: 100MB per file  
+- **Audio**: 25MB per file
+- **Chat Media**: 50MB per file
 
-### Upload Paths:
-- **Pet Images**: `/uploads/pets/`
-- **Category Images**: `/uploads/categories/`
-- **Breed Images**: `/uploads/breeds/`
-- **Slider Images**: `/uploads/sliders/`
-- **Profile Images**: `/uploads/profiles/`
-- **Post Media**: `/uploads/temp/`
+### Upload Endpoints:
+- **Pet Media**: `POST /api/pets` (images + audio)
+- **Pet Update**: `PUT /api/pets/:id` (images + audio)
+- **Category**: `POST /api/pet-categories` (image + icon)
+- **Breed**: `POST /api/breeds` (image + icon)
+- **Slider**: `POST /api/slider/add` (image only)
+- **Profile Image**: `PUT /api/profile/image` (single image)
+- **Post Media**: `POST /api/posts` (multiple images/videos)
+- **Chat Media**: `POST /api/chat/:chatId/send-media` (single file)
+
+### File Storage Structure:
+```
+uploads/
+├── pet-{timestamp}-{random}.jpg
+├── category-{timestamp}-{random}.png
+├── breed-{timestamp}-{random}.jpg
+├── slider-{timestamp}-{random}.jpg
+├── profile-{timestamp}-{random}.jpg
+├── post-{timestamp}-{random}.mp4
+├── chat-{timestamp}-{random}.jpg
+└── audio-{timestamp}-{random}.mp3
+```
 
 ---
 

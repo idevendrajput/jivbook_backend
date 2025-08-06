@@ -115,7 +115,7 @@ Handles both user registration and login in a single endpoint. Creates new user 
       "email": "admin@jivbook.com",
       "username": "admin",
       "isAdmin": true,
-      "profileImage": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80",
+      "profileImage": "/uploads/profiles/admin_profile_1704067200000.jpg",
       "postsCount": 0,
       "followersCount": 10,
       "followingCount": 4,

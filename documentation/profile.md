@@ -9,7 +9,17 @@ The Profile API handles comprehensive user profile management including profile 
 - **Pet Preferences**: Manage dairy/companion pet preferences
 - **Social Metrics**: Track posts, followers, following counts
 - **Privacy Settings**: Control profile visibility
-- **Image Upload Support**: Profile picture management
+- **File Upload Support**: Multipart profile image upload (no URLs)
+
+## 📁 Profile Image Upload
+
+**Important**: Profile image field now uses multipart file upload instead of URLs.
+
+### Supported Image Types
+- **Formats**: JPG, JPEG, PNG, GIF, WEBP
+- **Size Limit**: 10MB per file
+- **Storage**: Files stored locally with unique filenames
+- **URLs**: Auto-generated as `/uploads/profile-{timestamp}-{random}.ext`
 
 ## Base URL
 ```
@@ -44,7 +54,7 @@ Get current user profile (from authentication token).
     "name": "User Name",
     "username": "username",
     "email": "user@example.com",
-    "profileImage": "https://example.com/profile.jpg",
+    "profileImage": "/uploads/profile-1640995200-123456789.jpg",
     "address": "User Address",
     "latitude": 28.7041,
     "longitude": 77.1025,
@@ -73,8 +83,31 @@ Get user profile by ID.
 #### Success Response (200)
 Same format as GET /api/profile
 
+### PUT /api/profile/image
+Upload/Update profile image.
+
+**Method**: `PUT`  
+**Authentication**: Required  
+**Content-Type**: `multipart/form-data`
+
+#### Request Body (Form Data)
+```
+profileImage: file (required) - Image file to upload
+```
+
+#### Success Response (200)
+```json
+{
+  "success": true,
+  "message": "Profile image updated successfully",
+  "data": {
+    "profileImage": "/uploads/profile-1640995200-123456789.jpg"
+  }
+}
+```
+
 ### PUT /api/profile
-Update user profile information.
+Update user profile information (text data only).
 
 **Method**: `PUT`  
 **Authentication**: Required  
@@ -85,28 +118,37 @@ Update user profile information.
 {
   "id": "user_id",
   "name": "Updated Name",
-  "profileImage": "https://example.com/profile.jpg",
+  "email": "updated@example.com",
+  "phone": "+1234567890",
+  "bio": "Updated bio",
+  "website": "https://example.com",
   "address": "New Delhi, India",
   "latitude": 28.7041,
   "longitude": 77.1025,
-  "preferencePetType": "Dog",
-  "preferenceCategories": "Category1,Category2",
-  "fcm": "firebase_cloud_messaging_token"
+  "isPrivate": false,
+  "petTypePreferences": {
+    "dairyPets": true,
+    "companionPets": false
+  },
+  "preferredPetCategories": ["category_id_1"]
 }
 ```
 
 #### Request Parameters
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | String | Yes | User ID to update |
-| `name` | String | No | Updated user name |
-| `profileImage` | String | No | URL to profile image |
-| `address` | String | No | User's address |
-| `latitude` | Number | No | Geographic latitude |
-| `longitude` | Number | No | Geographic longitude |
-| `preferencePetType` | String | No | Preferred pet type |
-| `preferenceCategories` | String | No | Comma-separated category preferences |
-| `fcm` | String | No | FCM token for push notifications |
+|| Parameter | Type | Required | Description |
+||-----------|------|----------|-------------|
+|| `id` | String | Yes | User ID to update (must match authenticated user) |
+|| `name` | String | No | Updated user name |
+|| `email` | String | No | Updated email address |
+|| `phone` | String | No | Updated phone number |
+|| `bio` | String | No | User bio/description |
+|| `website` | String | No | User website URL |
+|| `address` | String | No | User's address |
+|| `latitude` | Number | No | Geographic latitude |
+|| `longitude` | Number | No | Geographic longitude |
+|| `isPrivate` | Boolean | No | Profile privacy setting |
+|| `petTypePreferences` | Object | No | Dairy and companion pet preferences |
+|| `preferredPetCategories` | Array | No | Array of preferred pet category IDs |
 
 #### Success Response (200)
 ```json
@@ -119,7 +161,7 @@ Update user profile information.
       "name": "Updated Name",
       "username": "johndoe1",
       "email": "john@example.com",
-      "profileImage": "https://example.com/profile.jpg",
+      "profileImage": "/uploads/profile-1640995200-123456789.jpg",
       "address": "New Delhi, India",
       "latitude": 28.7041,
       "longitude": 77.1025,
@@ -166,21 +208,58 @@ Update user profile information.
 
 ## Example Usage
 
-### cURL Example
+### cURL Examples
+
+#### Upload Profile Image
 ```bash
-curl -X PUT http://localhost:3001/api/profile \
+curl -X PUT http://localhost:3010/api/profile/image \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "profileImage=@/path/to/your/image.jpg"
+```
+
+#### Update Profile Info
+```bash
+curl -X PUT http://localhost:3010/api/profile \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "id": "USER_ID_HERE",
     "name": "Updated Name",
-    "profileImage": "https://example.com/profile.jpg",
+    "bio": "Updated bio",
     "address": "New Delhi, India",
-    "preferencePetType": "Dog"
+    "petTypePreferences": {
+      "dairyPets": true,
+      "companionPets": false
+    }
   }'
 ```
 
-### JavaScript Example
+### JavaScript Examples
+
+#### Upload Profile Image
+```javascript
+const uploadProfileImage = async (token, imageFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('profileImage', imageFile);
+    
+    const response = await fetch('/api/profile/image', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Profile image upload failed:', error);
+  }
+};
+```
+
+#### Update Profile Info
 ```javascript
 const updateProfile = async (token, profileData) => {
   try {
@@ -205,9 +284,12 @@ const updateProfile = async (token, profileData) => {
 
 ## Notes
 
-- Profile updates are incremental - only provide fields you want to update
-- Location data (latitude/longitude) is used for location-based features
-- FCM token is used for push notifications
-- All string fields are automatically trimmed
-- The `lastUpdate` timestamp is automatically updated on profile changes
-- Username cannot be changed through this endpoint (generated automatically during registration)
+- **Separate Endpoints**: Profile image upload and text updates use different endpoints
+- **File Management**: Old profile images are automatically deleted when new ones are uploaded
+- **Profile Updates**: Text updates are incremental - only provide fields you want to update
+- **Location Data**: Latitude/longitude used for location-based pet recommendations
+- **Authorization**: Users can only update their own profiles
+- **File Security**: Only image files are accepted for profile pictures
+- **String Trimming**: All text fields are automatically trimmed
+- **Auto Timestamps**: `lastUpdate` timestamp automatically updated on profile changes
+- **Username**: Cannot be changed (generated automatically during registration)

@@ -35,7 +35,7 @@ Retrieve all active sliders.
       "_id": "slider_id",
       "title": "Welcome to Jivbook",
       "description": "Find your perfect pet companion",
-      "image": "https://example.com/slider1.jpg",
+      "image": "/uploads/sliders/slider_1_1704067200000.jpg",
       "buttonText": "Get Started",
       "buttonLink": "/pets",
       "isActive": true,
@@ -47,7 +47,7 @@ Retrieve all active sliders.
       "_id": "slider_id_2",
       "title": "Pet Care Tips",
       "description": "Learn how to take care of your pets",
-      "image": "https://example.com/slider2.jpg",
+      "image": "/uploads/sliders/slider_2_1704067200000.jpg",
       "buttonText": "Learn More",
       "buttonLink": "/care-tips",
       "isActive": true,
@@ -77,18 +77,16 @@ Add a new slider. (Admin only)
 
 **Method**: `POST`  
 **Authentication**: Admin required  
-**Content-Type**: `application/json`
+**Content-Type**: `multipart/form-data`
 
-#### Request Body
-```json
-{
-  "title": "Welcome to Jivbook",
-  "description": "Find your perfect pet companion",
-  "image": "https://example.com/slider1.jpg",
-  "buttonText": "Get Started",
-  "buttonLink": "/pets",
-  "order": 1
-}
+#### Request Body (Form Data)
+```
+title: "Welcome to Jivbook"
+description: "Find your perfect pet companion"
+image: [FILE] (image file upload)
+buttonText: "Get Started"
+buttonLink: "/pets"
+order: 1
 ```
 
 #### Request Parameters
@@ -96,7 +94,7 @@ Add a new slider. (Admin only)
 |-----------|------|----------|-------------|
 | `title` | String | Yes | Slider title text |
 | `description` | String | No | Slider description text |
-| `image` | String | Yes | URL to slider image |
+| `image` | File | Yes | Image file (JPG, PNG, GIF, WEBP - max 10MB) |
 | `buttonText` | String | No | Call-to-action button text |
 | `buttonLink` | String | No | URL for button link |
 | `order` | Number | No | Display order (default: 0) |
@@ -110,7 +108,7 @@ Add a new slider. (Admin only)
     "_id": "slider_id",
     "title": "Welcome to Jivbook",
     "description": "Find your perfect pet companion",
-    "image": "https://example.com/slider1.jpg",
+    "image": "/uploads/sliders/slider_1_1704067200000.jpg",
     "buttonText": "Get Started",
     "buttonLink": "/pets",
     "isActive": true,
@@ -182,7 +180,7 @@ Update a slider by its ID. (Admin only)
     "_id": "slider_id",
     "title": "Updated Title",
     "description": "Updated description",
-    "image": "https://example.com/slider1.jpg",
+    "image": "/uploads/sliders/slider_1_1704067200000.jpg",
     "buttonText": "Get Started",
     "buttonLink": "/pets",
     "isActive": true,
@@ -194,6 +192,88 @@ Update a slider by its ID. (Admin only)
 ```
 
 #### Error Responses
+
+**404 Not Found**
+```json
+{
+  "success": false,
+  "message": "Slider not found",
+  "error": "No slider found with the provided ID"
+}
+```
+
+**403 Forbidden**
+```json
+{
+  "success": false,
+  "message": "Access denied",
+  "error": "Admin access required"
+}
+```
+
+**500 Server Error**
+```json
+{
+  "success": false,
+  "message": "Server error",
+  "error": "Detailed error message"
+}
+```
+
+---
+
+### PUT /update_image/:id
+Update slider image by its ID. (Admin only)
+
+**Method**: `PUT`  
+**Authentication**: Admin required  
+**Content-Type**: `multipart/form-data`
+
+#### Path Parameters
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | String | ID of the slider to update image |
+
+#### Request Body (Form Data)
+```
+image: [FILE] (new image file upload)
+```
+
+#### Request Parameters
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `image` | File | Yes | New image file (JPG, PNG, GIF, WEBP - max 10MB) |
+
+#### Success Response (200)
+```json
+{
+  "success": true,
+  "message": "Slider image updated successfully",
+  "data": {
+    "_id": "slider_id",
+    "title": "Welcome to Jivbook",
+    "description": "Find your perfect pet companion",
+    "image": "/uploads/sliders/slider_1_1704153600000.jpg",
+    "buttonText": "Get Started",
+    "buttonLink": "/pets",
+    "isActive": true,
+    "order": 1,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-02T12:00:00.000Z"
+  }
+}
+```
+
+#### Error Responses
+
+**400 Bad Request**
+```json
+{
+  "success": false,
+  "message": "Validation error",
+  "error": "Image file is required"
+}
+```
 
 **404 Not Found**
 ```json
@@ -303,7 +383,7 @@ Toggle slider active status. (Admin only)
     "_id": "slider_id",
     "title": "Welcome to Jivbook",
     "description": "Find your perfect pet companion",
-    "image": "https://example.com/slider1.jpg",
+    "image": "/uploads/sliders/slider_1_1704067200000.jpg",
     "buttonText": "Get Started",
     "buttonLink": "/pets",
     "isActive": false,
@@ -375,19 +455,16 @@ curl -X GET http://localhost:3001/api/slider/get_all
 #### Add New Slider (Admin)
 ```bash
 curl -X POST http://localhost:3001/api/slider/add \
-  -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
-  -d '{
-    "title": "Welcome to Jivbook",
-    "description": "Find your perfect pet companion",
-    "image": "https://example.com/slider1.jpg",
-    "buttonText": "Get Started",
-    "buttonLink": "/pets",
-    "order": 1
-  }'
+  -F "title=Welcome to Jivbook" \
+  -F "description=Find your perfect pet companion" \
+  -F "image=@/path/to/slider-image.jpg" \
+  -F "buttonText=Get Started" \
+  -F "buttonLink=/pets" \
+  -F "order=1"
 ```
 
-#### Update Slider (Admin)
+#### Update Slider Text Data (Admin)
 ```bash
 curl -X PUT http://localhost:3001/api/slider/update/SLIDER_ID \
   -H "Content-Type: application/json" \
@@ -396,6 +473,13 @@ curl -X PUT http://localhost:3001/api/slider/update/SLIDER_ID \
     "title": "Updated Title",
     "order": 2
   }'
+```
+
+#### Update Slider Image (Admin)
+```bash
+curl -X PUT http://localhost:3001/api/slider/update_image/SLIDER_ID \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -F "image=@/path/to/new-slider-image.jpg"
 ```
 
 #### Delete Slider (Admin)
@@ -422,21 +506,52 @@ const getSliders = async () => {
   }
 };
 
-const addSlider = async (token, sliderData) => {
+const addSlider = async (token, formData) => {
   try {
     const response = await fetch('/api/slider/add', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(sliderData)
+      body: formData // FormData object with image file
     });
     
     const result = await response.json();
     return result;
   } catch (error) {
     console.error('Failed to add slider:', error);
+  }
+};
+
+// Example usage:
+const createSliderFormData = (sliderInfo, imageFile) => {
+  const formData = new FormData();
+  formData.append('title', sliderInfo.title);
+  formData.append('description', sliderInfo.description);
+  formData.append('image', imageFile); // File object from input
+  formData.append('buttonText', sliderInfo.buttonText);
+  formData.append('buttonLink', sliderInfo.buttonLink);
+  formData.append('order', sliderInfo.order);
+  return formData;
+};
+
+const updateSliderImage = async (token, sliderId, imageFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    const response = await fetch(`/api/slider/update_image/${sliderId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Failed to update slider image:', error);
   }
 };
 ```

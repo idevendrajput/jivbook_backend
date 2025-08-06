@@ -118,73 +118,195 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Route to create a pet with image upload
-router.post('/pets', upload.array('images', 10), handleUploadError, async (req, res) => {
+// Create a new pet with media uploads (Auth required)
+router.post('/', auth, upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'audio', maxCount: 1 }
+]), handleUploadError, async (req, res) => {
   try {
-    const petData = req.body;
+    const petData = {
+      ...req.body,
+      owner: req.user._id
+    };
 
-    // Handle images if any
-    if (req.files && req.files.length > 0) {
-      petData.images = req.files.map(file => ({
-        url: file.path,
+    // Handle uploaded images
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      petData.images = req.files.images.map((file, index) => ({
+        url: `/uploads/${file.filename}`,
         filename: file.filename,
         size: file.size,
-        isMain: false
+        isMain: index === 0 // first image as main
       }));
-      petData.images[0].isMain = true; // first image set to main
+    } else {
+      return res.status(400).json(BaseResponse.error('At least one image is required'));
+    }
+
+    // Handle uploaded audio file
+    if (req.files && req.files.audio && req.files.audio.length > 0) {
+      const audioFile = req.files.audio[0];
+      petData.audio = {
+        url: `/uploads/${audioFile.filename}`,
+        filename: audioFile.filename,
+        size: audioFile.size
+      };
     }
 
     const newPet = new Pet(petData);
     const savedPet = await newPet.save();
-    res.status(201).json({
-      success: true,
-      data: savedPet
-    });
+    
+    const response = BaseResponse.success('Pet created successfully', savedPet);
+    res.status(201).json(response);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error creating pet',
-      error: error.message
-    });
+    const response = BaseResponse.error('Error creating pet', error.message);
+    res.status(500).json(response);
   }
 });
 
-// Route to fetch a specific pet by ID
-router.get('/pets/:id', async (req, res) => {
+// Get a specific pet by ID
+router.get('/:id', async (req, res) => {
   try {
-    const pet = await Pet.findById(req.params.id).populate('petCategory').populate('breed').populate('owner');
+    const pet = await Pet.findById(req.params.id)
+      .populate('petCategory')
+      .populate('breed')
+      .populate('owner', 'name email phone profileImage');
+    
     if (!pet) {
-      return res.status(404).json({ success: false, message: 'Pet not found' });
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
     }
-    res.status(200).json({ success: true, data: pet });
+    
+    // Increment view count
+    await Pet.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } });
+    
+    const response = BaseResponse.success('Pet fetched successfully', pet);
+    res.json(response);
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error fetching pet', error: error.message });
+    const response = BaseResponse.error('Error fetching pet', error.message);
+    res.status(500).json(response);
   }
 });
 
-// Route to update a pet by ID (admin only)
-router.put('/pets/:id', async (req, res) => {
+// Update pet by ID (Owner or Admin only)
+router.put('/:id', auth, upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'audio', maxCount: 1 }
+]), handleUploadError, async (req, res) => {
   try {
-    const updatedPet = await Pet.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedPet) {
-      return res.status(404).json({ success: false, message: 'Pet not found' });
+    const pet = await Pet.findById(req.params.id);
+    
+    if (!pet) {
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
     }
-    res.status(200).json({ success: true, data: updatedPet });
+    
+    // Check if user is owner or admin
+    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can update');
+      return res.status(403).json(response);
+    }
+    
+    const updateData = req.body;
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Handle new uploaded images
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      // Delete old image files
+      if (pet.images && pet.images.length > 0) {
+        pet.images.forEach(image => {
+          const oldPath = path.join('./uploads', image.filename);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
+        });
+      }
+      
+      // Set new images
+      updateData.images = req.files.images.map((file, index) => ({
+        url: `/uploads/${file.filename}`,
+        filename: file.filename,
+        size: file.size,
+        isMain: index === 0
+      }));
+    }
+    
+    // Handle new uploaded audio
+    if (req.files && req.files.audio && req.files.audio.length > 0) {
+      // Delete old audio file
+      if (pet.audio && pet.audio.filename) {
+        const oldAudioPath = path.join('./uploads', pet.audio.filename);
+        if (fs.existsSync(oldAudioPath)) {
+          fs.unlinkSync(oldAudioPath);
+        }
+      }
+      
+      // Set new audio
+      const audioFile = req.files.audio[0];
+      updateData.audio = {
+        url: `/uploads/${audioFile.filename}`,
+        filename: audioFile.filename,
+        size: audioFile.size
+      };
+    }
+    
+    const updatedPet = await Pet.findByIdAndUpdate(req.params.id, updateData, { new: true })
+      .populate('petCategory')
+      .populate('breed')
+      .populate('owner', 'name email phone');
+    
+    const response = BaseResponse.success('Pet updated successfully', updatedPet);
+    res.json(response);
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error updating pet', error: error.message });
+    const response = BaseResponse.error('Error updating pet', error.message);
+    res.status(500).json(response);
   }
 });
 
-// Route to delete a pet by ID (admin only)
-router.delete('/pets/:id', async (req, res) => {
+// Delete pet by ID (Owner or Admin only)
+router.delete('/:id', auth, async (req, res) => {
   try {
-    const deletedPet = await Pet.findByIdAndDelete(req.params.id);
-    if (!deletedPet) {
-      return res.status(404).json({ success: false, message: 'Pet not found' });
+    const pet = await Pet.findById(req.params.id);
+    
+    if (!pet) {
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
     }
-    res.status(200).json({ success: true, message: 'Pet deleted successfully' });
+    
+    // Check if user is owner or admin
+    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can delete');
+      return res.status(403).json(response);
+    }
+    
+    // Delete associated media files
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Delete image files
+    if (pet.images && pet.images.length > 0) {
+      pet.images.forEach(image => {
+        const imagePath = path.join('./uploads', image.filename);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      });
+    }
+    
+    // Delete audio file
+    if (pet.audio && pet.audio.filename) {
+      const audioPath = path.join('./uploads', pet.audio.filename);
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+    }
+    
+    await Pet.findByIdAndDelete(req.params.id);
+    
+    const response = BaseResponse.success('Pet deleted successfully');
+    res.json(response);
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error deleting pet', error: error.message });
+    const response = BaseResponse.error('Error deleting pet', error.message);
+    res.status(500).json(response);
   }
 });
 

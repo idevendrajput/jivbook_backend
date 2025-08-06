@@ -6,8 +6,19 @@ The Social Media API provides complete functionality for a social media platform
 
 ## Base URL
 ```
-http://localhost:5000/api
+http://localhost:3010/api
 ```
+
+## 📁 File Upload Support
+
+**Important**: Post media fields now use multipart file uploads instead of URLs.
+
+### Supported Media Types
+- **Images**: JPG, JPEG, PNG, GIF, WEBP (max 10MB each)
+- **Videos**: MP4, AVI, MOV, MKV (max 100MB each)
+- **Multiple Files**: Up to 10 media files per post
+- **Storage**: Files stored locally with unique filenames
+- **URLs**: Auto-generated as `/uploads/post-{timestamp}-{random}.ext`
 
 ## 🔐 Authentication
 
@@ -23,50 +34,57 @@ Authorization: Bearer <your_jwt_token>
 ### Create Post
 **POST** `/posts`
 
-**Description:** Create a new post with media, caption, and tags
+**Description:** Create a new post with multipart file uploads, caption, and tags
+**Content-Type:** `multipart/form-data`
+**Authentication:** Required
 
-**Request Body:**
-```json
-{
-  "caption": "Look at my beautiful Golden Retriever! 🐕 #dog #pet #goldenretriever #love",
-  "media": [
-    {
-      "type": "image",
-      "url": "https://example.com/dog.jpg",
-      "order": 0
-    },
-    {
-      "type": "video",
-      "url": "https://example.com/dog_video.mp4",
-      "thumbnail": "https://example.com/thumbnail.jpg",
-      "order": 1
-    }
-  ],
-  "tags": ["dog", "pet", "goldenretriever", "love"],
-  "location": {
-    "name": "Central Park, New York",
-    "coordinates": [-73.968285, 40.785091]
-  },
-  "mentions": ["64abc123def456789"]
-}
+**Request Body (Form Data):**
+```
+caption: "Look at my beautiful Golden Retriever! 🐕 #dog #pet #goldenretriever #love"
+media: file[] (multiple image/video files, max 10)
+locationName: "Central Park, New York" (optional)
+latitude: "40.785091" (optional)
+longitude: "-73.968285" (optional)
+tags: "dog,pet,goldenretriever,love" (comma-separated, without #)
+mentions: "64abc123def456789,64def456abc789123" (comma-separated user IDs)
 ```
 
 **Success Response (201):**
 ```json
 {
-  "_id": "64def789abc123456",
-  "user": {
-    "_id": "64abc123def456789",
-    "username": "john_doe",
-    "profileImage": "https://example.com/profile.jpg"
-  },
-  "caption": "Look at my beautiful Golden Retriever! 🐕 #dog #pet #goldenretriever #love",
-  "media": [...],
-  "tags": ["dog", "pet", "goldenretriever", "love"],
-  "likesCount": 0,
-  "commentsCount": 0,
-  "createdAt": "2023-07-24T07:30:00.000Z",
-  "updatedAt": "2023-07-24T07:30:00.000Z"
+  "success": true,
+  "message": "Post created successfully",
+  "data": {
+    "_id": "64def789abc123456",
+    "user": {
+      "_id": "64abc123def456789",
+      "username": "john_doe",
+      "name": "John Doe",
+      "profileImage": "/uploads/profile-1640995200-123456789.jpg"
+    },
+    "caption": "Look at my beautiful Golden Retriever! 🐕 #dog #pet #goldenretriever #love",
+    "media": [
+      {
+        "type": "image",
+        "url": "/uploads/post-1640995200-123456789.jpg",
+        "order": 0
+      },
+      {
+        "type": "video",
+        "url": "/uploads/post-1640995200-987654321.mp4",
+        "order": 1
+      }
+    ],
+    "tags": ["dog", "pet", "goldenretriever", "love"],
+    "location": {
+      "name": "Central Park, New York",
+      "coordinates": [-73.968285, 40.785091]
+    },
+    "likesCount": 0,
+    "commentsCount": 0,
+    "isActive": true,
+    "createdAt": "2025-01-06T07:30:00.000Z"
+  }
 }
 ```
 
@@ -79,23 +97,43 @@ Authorization: Bearer <your_jwt_token>
 
 **Success Response (200):**
 ```json
-[
-  {
-    "_id": "64def789abc123456",
-    "user": {
-      "_id": "64abc123def456789",
-      "username": "john_doe",
-      "profileImage": "https://example.com/profile.jpg"
-    },
-    "caption": "Look at my beautiful Golden Retriever!",
-    "media": [...],
-    "likesCount": 42,
-    "commentsCount": 8,
-    "isLikedByCurrentUser": false,
-    "timeAgo": "2h",
-    "createdAt": "2023-07-24T07:30:00.000Z"
+{
+  "success": true,
+  "message": "Posts fetched successfully",
+  "data": {
+    "posts": [
+      {
+        "_id": "64def789abc123456",
+        "user": {
+          "_id": "64abc123def456789",
+          "username": "john_doe",
+          "name": "John Doe",
+          "profileImage": "/uploads/profile-1640995200-123456789.jpg"
+        },
+        "caption": "Look at my beautiful Golden Retriever!",
+        "media": [
+          {
+            "type": "image",
+            "url": "/uploads/post-1640995200-123456789.jpg",
+            "order": 0
+          }
+        ],
+        "tags": ["dog", "pet"],
+        "likesCount": 42,
+        "commentsCount": 8,
+        "isActive": true,
+        "timeAgo": "2h",
+        "createdAt": "2025-01-06T07:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalPosts": 42,
+      "hasMore": true
+    }
   }
-]
+}
 ```
 
 ### Get Post by ID
@@ -104,24 +142,66 @@ Authorization: Bearer <your_jwt_token>
 ### Update Post
 **PUT** `/posts/:id`
 
+**Description:** Update post caption, tags, or location (media cannot be updated)
+**Content-Type:** `application/json`
+**Authentication:** Required (Owner only)
+
 **Request Body:**
 ```json
 {
-  "caption": "Updated caption",
-  "tags": ["updated", "tags"]
+  "caption": "Updated caption with new hashtags! #updated",
+  "tags": ["updated", "tags"],
+  "location": {
+    "name": "New Location",
+    "coordinates": [-74.006, 40.7128]
+  }
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Post updated successfully",
+  "data": {
+    "_id": "64def789abc123456",
+    "caption": "Updated caption with new hashtags! #updated",
+    "tags": ["updated", "tags"],
+    "updatedAt": "2025-01-06T08:30:00.000Z"
+  }
 }
 ```
 
 ### Delete Post
 **DELETE** `/posts/:id`
 
-### Like/Unlike Post
-**POST** `/posts/:id/like`
+**Description:** Delete a post and all associated media files
+**Authentication:** Required (Owner only)
+**File Cleanup:** Automatically deletes all associated media files
 
 **Success Response (200):**
 ```json
 {
-  "likesCount": 43
+  "success": true,
+  "message": "Post deleted successfully"
+}
+```
+
+### Like/Unlike Post
+**POST** `/posts/:id/like`
+
+**Description:** Toggle like status on a post
+**Authentication:** Required
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Post liked",
+  "data": {
+    "likesCount": 43,
+    "isLiked": true
+  }
 }
 ```
 
@@ -150,7 +230,7 @@ Authorization: Bearer <your_jwt_token>
   "user": {
     "_id": "64abc123def456789",
     "username": "jane_doe",
-    "profileImage": "https://example.com/jane.jpg"
+    "profileImage": "/uploads/profiles/profile_2_1704067200000.jpg"
   },
   "text": "So adorable! 😍",
   "likesCount": 0,
@@ -229,7 +309,7 @@ Authorization: Bearer <your_jwt_token>
     "_id": "64abc123def456789",
     "username": "jane_doe",
     "name": "Jane Doe",
-    "profileImage": "https://example.com/jane.jpg"
+    "profileImage": "/uploads/profiles/profile_2_1704067200000.jpg"
   }
 ]
 ```
@@ -267,7 +347,7 @@ Authorization: Bearer <your_jwt_token>
     "user": {
       "_id": "64abc123def456789",
       "username": "john_doe",
-      "profileImage": "https://example.com/profile.jpg",
+      "profileImage": "/uploads/profiles/profile_1_1704067200000.jpg",
       "isVerified": true
     },
     "caption": "Beautiful sunset! 🌅",

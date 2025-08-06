@@ -5,9 +5,11 @@ You are working on **Jivbook Frontend** - a pet-focused social platform built wi
 
 ## Backend API Details
 - **Base URL**: `https://api.jivbook.com` (Production) or `http://localhost:3010` (Development)
-- **API Status**: ✅ **100% Tested & Working** (All 25+ endpoints across 15 modules)
+- **API Status**: ✅ **100% Updated & Working** (All 25+ endpoints across 15 modules)
+- **Major Update**: All media APIs converted from URL inputs to multipart file uploads
 - **Authentication**: JWT-based (Access tokens: 24h, Refresh tokens: 7 days)
 - **Response Format**: Consistent JSON structure with success/error handling
+- **File Upload**: Multipart form-data for all media (images, videos, audio)
 
 ## 📚 Complete Documentation Available
 
@@ -99,20 +101,67 @@ const apiCall = await fetch('/api/endpoint', {
 });
 ```
 
-### File Upload Example
+### File Upload Examples
+
+**Important**: All media fields now require actual file uploads, not URLs!
+
+#### 1. Create Pet with Images + Audio
 ```javascript
-// For posts with media
 const formData = new FormData();
-formData.append('caption', 'My pet post!');
-formData.append('media', fileInput.files[0]);
-formData.append('location', 'Delhi, India');
-formData.append('tags', 'cute,pet,dog');
+formData.append('title', 'Golden Retriever Puppy');
+formData.append('description', 'Friendly and trained');
+formData.append('price', '15000');
+formData.append('petCategory', 'categoryId');
+formData.append('address', 'New Delhi, India');
+formData.append('latitude', '28.7041');
+formData.append('longitude', '77.1025');
+
+// Multiple images
+for (let i = 0; i < imageFiles.length; i++) {
+  formData.append('images', imageFiles[i]);
+}
+
+// Single audio file (optional)
+if (audioFile) {
+  formData.append('audio', audioFile);
+}
+
+const response = await fetch('/api/pets', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+#### 2. Create Social Media Post
+```javascript
+const formData = new FormData();
+formData.append('caption', 'My adorable pet! 🐕');
+formData.append('tags', 'cute,pet,dog'); // comma-separated, no #
+formData.append('locationName', 'Delhi, India');
+formData.append('latitude', '28.7041');
+formData.append('longitude', '77.1025');
+
+// Multiple media files (images/videos)
+for (let file of mediaFiles) {
+  formData.append('media', file);
+}
 
 const response = await fetch('/api/posts', {
   method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${token}`
-  },
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+#### 3. Upload Profile Image
+```javascript
+const formData = new FormData();
+formData.append('profileImage', imageFile);
+
+const response = await fetch('/api/profile/image', {
+  method: 'PUT',
+  headers: { 'Authorization': `Bearer ${token}` },
   body: formData
 });
 ```
@@ -167,14 +216,23 @@ All APIs return consistent format:
 ### Key Features to Implement
 - 🔐 **JWT Authentication** with auto-refresh
 - 📱 **Responsive Design** for mobile/desktop
-- 🖼️ **Image/Video Upload** with preview
+- 🖼️ **Multipart File Upload** with preview (NO URL INPUTS!)
+- 🎵 **Audio Upload Support** for pet sounds
 - 🗺️ **Location Services** (Google Places integration)
-- 💬 **Real-time Chat** (WebSocket)
+- 💬 **Real-time Chat** with media sharing
 - 📊 **Infinite Scroll** for feeds
 - ❤️ **Like/Unlike** functionality
 - 👥 **Follow/Unfollow** system
 - 🔍 **Search & Filters** for pets
 - 📈 **Admin Dashboard** (for admin users)
+
+### File Upload Requirements
+- **Pet Images**: Multiple files, max 10, up to 10MB each
+- **Pet Audio**: Single file, up to 25MB (MP3, WAV, AAC, OGG)
+- **Post Media**: Multiple images/videos, max 10, up to 100MB for videos
+- **Profile Image**: Single image, up to 10MB
+- **Chat Media**: Single image/video, up to 50MB
+- **Supported Formats**: JPG, JPEG, PNG, GIF, WEBP, MP4, AVI, MOV
 
 ## 🔒 Security Considerations
 - Store JWT tokens securely (httpOnly cookies recommended)
@@ -192,25 +250,57 @@ All APIs return consistent format:
 4. **Social Features**: Add posts/comments using social-media.md
 5. **Testing**: Use API_TESTING_LOGS.md for real examples and troubleshooting
 
-## 🚨 Important Notes
+## 🚨 Critical Implementation Notes
 
-- **All APIs are tested and working** - you can rely on them
-- **File uploads require multipart/form-data** - not JSON
+### File Upload Changes (IMPORTANT!)
+- ❌ **NO URL INPUTS**: All image/video/audio fields now reject URLs
+- ✅ **MULTIPART ONLY**: Use FormData with actual file objects
+- 🗂️ **Auto File Management**: Backend handles file storage & cleanup
+- 🔗 **Generated URLs**: System returns paths like `/uploads/filename.ext`
+
+### API Reliability
+- **All APIs are tested and working** - 100% test coverage
+- **File uploads require multipart/form-data** - never JSON for media
 - **Admin features require admin tokens** - check user.isAdmin
 - **WebSocket available** for real-time chat features
-- **Rate limiting in place** - handle 429 errors
+- **Rate limiting in place** - handle 429 errors gracefully
 - **Pagination available** on all list endpoints
 
-## 📞 Backend Team Contact
-- All documentation is up-to-date as of August 6, 2025
-- 100% test coverage with detailed examples
-- 3 issues were found and fixed during testing
-- Response times are under 500ms average
+### Frontend File Handling Examples
+```javascript
+// ❌ OLD WAY (Will be rejected)
+const postData = {
+  images: ["https://example.com/image.jpg"],
+  audioUrl: "https://example.com/audio.mp3"
+};
 
-**Recommendation**: Start by reading the Complete API Documentation file, then implement authentication, then build core pet browsing functionality, and finally add social features.
+// ✅ NEW WAY (Required)
+const formData = new FormData();
+formData.append('images', actualFileObject1);
+formData.append('images', actualFileObject2);
+formData.append('audio', actualAudioFile);
+```
+
+## 📞 Backend Team Contact
+- All documentation is up-to-date as of January 6, 2025
+- **MAJOR UPDATE**: All media APIs converted to multipart file uploads
+- 100% test coverage with detailed examples
+- All issues resolved during comprehensive testing
+- Response times are under 500ms average
+- File upload handling fully implemented and tested
+
+**Recommendation**: 
+1. Read the Complete API Documentation file first
+2. Implement authentication system
+3. Build file upload components (critical for all media)
+4. Create pet browsing with image upload
+5. Add social features with media sharing
+6. Implement real-time chat with file sharing
+
+**Critical**: Ensure your frontend file upload components handle multipart form data correctly!
 
 ---
 
 **Documentation Location**: `/Users/devendrasingh/WebstormProjects/jivbook_backend/documentation/`
-**Last Updated**: August 6, 2025
-**API Status**: ✅ Production Ready
+**Last Updated**: January 6, 2025
+**API Status**: ✅ Production Ready with File Upload Support

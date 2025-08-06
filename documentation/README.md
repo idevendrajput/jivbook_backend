@@ -3,10 +3,12 @@
 Welcome to the comprehensive API documentation for Jivbook Backend - a modern Node.js Express backend with MongoDB integration for a pet-focused social platform.
 
 ## ✅ Testing Status
-**All APIs Tested & Working** - Updated: August 6, 2025
+**All APIs Updated & Working** - Updated: January 6, 2025
 - **Total APIs**: 25+ endpoints across 15 modules
+- **Major Update**: All media APIs converted from URL inputs to multipart file uploads
+- **File Upload Support**: Images, videos, and audio files now handled securely
 - **Test Coverage**: 100% tested and working
-- **Issues Found**: 3 (all fixed)
+- **Issues Found**: All resolved
 - **Response Time**: All APIs < 500ms average
 
 ## 📄 Complete Documentation
@@ -39,10 +41,28 @@ Welcome to the comprehensive API documentation for Jivbook Backend - a modern No
 ## 🚀 Quick Start
 
 All APIs follow a consistent structure:
-- **Base URL**: `http://localhost:3001/api` (or your configured port)
+- **Base URL**: `http://localhost:3010/api` (development) or `https://api.jivbook.com/api` (production)
 - **Response Format**: Standardized BaseResponse model
 - **Authentication**: JWT-based for protected routes
-- **Content-Type**: `application/json`
+- **Content-Type**: 
+  - `application/json` for regular APIs
+  - `multipart/form-data` for file upload APIs
+
+## 📁 File Upload Support
+
+**Important: All media fields now use multipart file uploads instead of URLs**
+
+### Supported File Types
+- **Images**: JPG, JPEG, PNG, GIF, WEBP (max 10MB)
+- **Videos**: MP4, AVI, MOV, MKV (max 100MB)
+- **Audio**: MP3, WAV, AAC, OGG (max 25MB)
+
+### File Upload Endpoints
+- **Pet Media**: `POST /api/pets` (images + audio)
+- **Profile Image**: `PUT /api/profile/image`
+- **Post Media**: `POST /api/posts` (multiple files)
+- **Chat Media**: `POST /api/chat/:chatId/send-media`
+- **Category/Breed**: Admin endpoints for images/icons
 
 ## 📋 Common Response Format
 

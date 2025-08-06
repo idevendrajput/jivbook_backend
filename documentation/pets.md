@@ -2,6 +2,16 @@
 
 API documentation for managing and accessing pet data, location-based searches, and personalized recommendations in the Jivbook platform.
 
+## 📁 File Upload Support
+
+**Important**: All pet media fields now use multipart file uploads instead of URLs.
+
+### Supported Media Types
+- **Images**: JPG, JPEG, PNG, GIF, WEBP (max 10MB each, up to 10 files)
+- **Audio**: MP3, WAV, AAC, OGG (max 25MB, single file)
+- **Storage**: Files stored locally with unique filenames
+- **URLs**: Auto-generated as `/uploads/filename.ext`
+
 ## Endpoints
 
 ### Get All Pets
@@ -21,9 +31,35 @@ API documentation for managing and accessing pet data, location-based searches, 
 ### Create a Pet
 - **URL**: `/api/pets`
 - **Method**: `POST`
-- **Description**: Add a new pet to the marketplace with image uploads.
-- **Request Body**: JSON object with pet details including title, description, price, etc.
-- **Response Format**: Returns the newly created pet's details.
+- **Authentication**: Required (JWT token)
+- **Description**: Add a new pet to the marketplace with multipart file uploads.
+- **Content-Type**: `multipart/form-data`
+- **Request Body**: Form-data with pet details and files
+  ```
+  title: string (required)
+  description: string (required)
+  petCategory: ObjectId (required)
+  breed: ObjectId (optional)
+  price: number (required)
+  age[value]: number (required)
+  age[unit]: string (days/weeks/months/years)
+  gender: string (male/female/unknown)
+  address: string (required)
+  latitude: number (required)
+  longitude: number (required)
+  images: file[] (required, multiple image files)
+  audio: file (optional, single audio file)
+  
+  // Optional fields for dairy pets:
+  dairyDetails[milkProduction][value]: number
+  dairyDetails[milkProduction][unit]: string
+  
+  // Optional fields for companion pets:
+  companionDetails[isTrained]: boolean
+  companionDetails[temperament]: string
+  companionDetails[goodWithKids]: boolean
+  ```
+- **Response Format**: Returns the newly created pet's details with file URLs.
 
 ### Get Pet by ID
 - **URL**: `/api/pets/:id`
@@ -31,17 +67,30 @@ API documentation for managing and accessing pet data, location-based searches, 
 - **Description**: Get detailed information for a specific pet by ID.
 - **Response Format**: Returns pet details or error if not found.
 
-### Update a Pet (Admin only)
+### Update a Pet (Owner or Admin only)
 - **URL**: `/api/pets/:id`
 - **Method**: `PUT`
-- **Description**: Update details for a specific pet (admin only).
-- **Request Body**: JSON object with updated fields.
-- **Response Format**: Returns updated pet details or error if not found.
+- **Authentication**: Required (Pet owner or Admin)
+- **Description**: Update details for a specific pet with optional file uploads.
+- **Content-Type**: `multipart/form-data`
+- **Request Body**: Form-data with updated fields and optional new files
+  ```
+  // Any field from create pet can be updated
+  title: string (optional)
+  description: string (optional)
+  price: number (optional)
+  images: file[] (optional, replaces all existing images)
+  audio: file (optional, replaces existing audio)
+  ```
+- **File Management**: Old files automatically deleted when replaced
+- **Response Format**: Returns updated pet details with new file URLs.
 
-### Delete a Pet (Admin only)
+### Delete a Pet (Owner or Admin only)
 - **URL**: `/api/pets/:id`
 - **Method**: `DELETE`
-- **Description**: Delete a specific pet (admin only).
+- **Authentication**: Required (Pet owner or Admin)
+- **Description**: Delete a specific pet and all associated files.
+- **File Cleanup**: Automatically deletes all associated image and audio files
 - **Response Format**: Success or error message.
 
 ### Get Nearby Pets
@@ -61,7 +110,50 @@ API documentation for managing and accessing pet data, location-based searches, 
 - **Parameters**: Standard pagination.
 - **Response Format**: Returns recommended pets.
 
+## Example Response Format
+
+### Pet Data Structure
+```json
+{
+  "success": true,
+  "message": "Pet created successfully",
+  "data": {
+    "_id": "pet_id",
+    "title": "Golden Retriever Puppy",
+    "description": "Friendly and trained puppy",
+    "price": 15000,
+    "images": [
+      {
+        "url": "/uploads/pet-1640995200-123456789.jpg",
+        "filename": "pet-1640995200-123456789.jpg",
+        "size": 2048000,
+        "isMain": true,
+        "uploadedAt": "2025-01-06T00:00:00.000Z"
+      }
+    ],
+    "audio": {
+      "url": "/uploads/audio-1640995200-987654321.mp3",
+      "filename": "audio-1640995200-987654321.mp3",
+      "size": 1024000,
+      "uploadedAt": "2025-01-06T00:00:00.000Z"
+    },
+    "owner": {
+      "_id": "owner_id",
+      "name": "Pet Owner",
+      "email": "owner@example.com"
+    },
+    "petCategory": {
+      "_id": "category_id",
+      "name": "Dogs"
+    },
+    "createdAt": "2025-01-06T00:00:00.000Z"
+  }
+}
+```
+
 ## Common Behavior
-- **Authentication**: Relevant endpoints require JWT token in the Authorization header.
-- **Filtering & Pagination**: Standardized approach across endpoints.
-- **Data Response**: Consistent BaseResponse format for success and error handling.
+- **Authentication**: Pet creation, update, and deletion require JWT token
+- **File Management**: Automatic cleanup of old files on update/delete
+- **Filtering & Pagination**: Standardized approach across endpoints
+- **Data Response**: Consistent BaseResponse format for success and error handling
+- **Authorization**: Only pet owners and admins can modify pet data

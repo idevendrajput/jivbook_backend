@@ -11,24 +11,34 @@ exports.createPost = async (req, res) => {
       user: req.user._id
     };
     
-    // Handle media files if any
+    // Handle uploaded media files
     if (req.files && req.files.length > 0) {
-      postData.media = req.files.map((file, index) => ({
-        type: file.mimetype.startsWith('image/') ? 'image' : 'video',
-        url: file.path,
-        order: index
-      }));
+      postData.media = req.files.map((file, index) => {
+        const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        return {
+          type: mediaType,
+          url: `/uploads/${file.filename}`,
+          order: index
+        };
+      });
+    } else {
+      // Optional: Allow text-only posts or require media
+      // return res.status(400).json({ error: 'At least one media file is required' });
     }
     
-    // Handle tags
-    if (req.body.tags && typeof req.body.tags === 'string') {
-      postData.tags = req.body.tags.split(',').map(tag => tag.trim());
+    // Handle tags (hashtags)
+    if (req.body.tags) {
+      if (typeof req.body.tags === 'string') {
+        postData.tags = req.body.tags.split(',').map(tag => tag.trim().replace('#', ''));
+      } else if (Array.isArray(req.body.tags)) {
+        postData.tags = req.body.tags.map(tag => tag.trim().replace('#', ''));
+      }
     }
     
     // Handle location
     if (req.body.latitude && req.body.longitude) {
       postData.location = {
-        name: req.body.location || 'Unknown Location',
+        name: req.body.locationName || 'Unknown Location',
         coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
       };
     }
@@ -36,47 +46,139 @@ exports.createPost = async (req, res) => {
     const newPost = new Post(postData);
     await newPost.save();
     
+    // Populate user data for response
+    await newPost.populate('user', 'username name profileImage');
+    
     // Update user's post count
     await User.findByIdAndUpdate(req.user._id, { $inc: { postsCount: 1 } });
     
-    res.status(201).json(newPost);
+    res.status(201).json({
+      success: true,
+      message: 'Post created successfully',
+      data: newPost
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
-// Get all posts
+// Get all posts with pagination
 exports.getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ isActive: true }).populate('user', 'username profileImage');
-    res.status(200).json(posts);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    
+    const posts = await Post.find({ isActive: true })
+      .populate('user', 'username name profileImage')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    const total = await Post.countDocuments({ isActive: true });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Posts fetched successfully',
+      data: {
+        posts,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalPosts: total,
+          hasMore: page < Math.ceil(total / limit)
+        }
+      }
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
 // Get a post by ID
 exports.getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id).populate('user', 'username profileImage');
-    if (!post) return res.status(404).json({ error: 'Post not found' });
-    res.status(200).json(post);
+    const post = await Post.findById(req.params.id)
+      .populate('user', 'username name profileImage');
+    
+    if (!post || !post.isActive) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Post not found' 
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Post fetched successfully',
+      data: post
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
-// Update a post
+// Update a post (only caption and tags can be updated, not media)
 exports.updatePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post || post.user.toString() !== req.user._id.toString())
-      return res.status(403).json({ error: 'Unauthorized' });
-    Object.assign(post, req.body);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Post not found' 
+      });
+    }
+    
+    if (post.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Unauthorized - Only post owner can update' 
+      });
+    }
+    
+    // Only allow updating certain fields
+    const allowedUpdates = ['caption', 'tags', 'location'];
+    const updates = {};
+    
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+    
+    // Handle tags update
+    if (updates.tags) {
+      if (typeof updates.tags === 'string') {
+        updates.tags = updates.tags.split(',').map(tag => tag.trim().replace('#', ''));
+      } else if (Array.isArray(updates.tags)) {
+        updates.tags = updates.tags.map(tag => tag.trim().replace('#', ''));
+      }
+    }
+    
+    Object.assign(post, updates);
     await post.save();
-    res.status(200).json(post);
+    
+    await post.populate('user', 'username name profileImage');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Post updated successfully',
+      data: post
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
@@ -84,15 +186,50 @@ exports.updatePost = async (req, res) => {
 exports.deletePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post || post.user.toString() !== req.user._id.toString())
-      return res.status(403).json({ error: 'Unauthorized' });
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Post not found' 
+      });
+    }
+    
+    if (post.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Unauthorized - Only post owner can delete' 
+      });
+    }
+    
+    // Delete associated media files
+    if (post.media && post.media.length > 0) {
+      const fs = require('fs');
+      const path = require('path');
+      
+      post.media.forEach(mediaItem => {
+        const filename = mediaItem.url.split('/').pop();
+        const mediaPath = path.join('./uploads', filename);
+        if (fs.existsSync(mediaPath)) {
+          fs.unlinkSync(mediaPath);
+        }
+      });
+    }
+    
+    // Soft delete
     post.isActive = false;
     await post.save();
+    
     // Update user's post count
     await User.findByIdAndUpdate(req.user._id, { $inc: { postsCount: -1 } });
-    res.status(200).json({ message: 'Post deleted' });
+    
+    res.status(200).json({ 
+      success: true,
+      message: 'Post deleted successfully' 
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
@@ -100,16 +237,34 @@ exports.deletePost = async (req, res) => {
 exports.likePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    if (!post) return res.status(404).json({ error: 'Post not found' });
+    if (!post || !post.isActive) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Post not found' 
+      });
+    }
+    
     const isLiked = post.isLikedBy(req.user._id);
     if (isLiked) {
       post.removeLike(req.user._id);
     } else {
       post.addLike(req.user._id);
     }
+    
     await post.save();
-    res.status(200).json({ likesCount: post.likesCount });
+    
+    res.status(200).json({ 
+      success: true,
+      message: isLiked ? 'Post unliked' : 'Post liked',
+      data: {
+        likesCount: post.likesCount,
+        isLiked: !isLiked
+      }
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };

@@ -171,9 +171,21 @@ const petSchema = new mongoose.Schema({
       default: false // one image should be marked as main
     }
   }],
-  audioUrl: {
-    type: String,
-    default: null
+  audio: {
+    url: {
+      type: String,
+      default: null
+    },
+    filename: {
+      type: String
+    },
+    size: {
+      type: Number // in bytes
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
   
   // Location

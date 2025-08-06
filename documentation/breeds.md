@@ -52,13 +52,13 @@ Retrieve all breeds with optional filters, search, sorting, and pagination.
         "_id": "breed_id",
         "name": "Golden Retriever",
         "description": "Friendly and intelligent breed",
-        "image": "https://example.com/golden-retriever.jpg",
-        "icon": "https://example.com/dog-icon.png",
+        "image": "/uploads/breeds/breed_1_1704067200000.jpg",
+        "icon": "/uploads/breeds/icon_1_1704067200000.jpg",
         "category": {
           "_id": "category_id",
           "name": "Dogs",
           "slug": "dogs",
-          "image": "https://example.com/dog-category.jpg"
+          "image": "/uploads/pet-categories/category_1_1704067200000.jpg"
         },
         "isActive": true,
         "order": 1,
@@ -121,13 +121,13 @@ Retrieve all breeds within a specific category.
         "_id": "breed_id",
         "name": "Golden Retriever",
         "description": "Friendly and intelligent breed",
-        "image": "https://example.com/golden-retriever.jpg",
-        "icon": "https://example.com/dog-icon.png",
+        "image": "/uploads/breeds/breed_1_1704067200000.jpg",
+        "icon": "/uploads/breeds/icon_1_1704067200000.jpg",
         "category": {
           "_id": "category_id",
           "name": "Dogs",
           "slug": "dogs",
-          "image": "https://example.com/dog-category.jpg"
+          "image": "/uploads/pet-categories/category_1_1704067200000.jpg"
         },
         "isActive": true,
         "order": 1,
@@ -197,13 +197,13 @@ Retrieve a specific breed by its slug.
     "_id": "breed_id",
     "name": "Golden Retriever",
     "description": "Friendly and intelligent breed",
-    "image": "https://example.com/golden-retriever.jpg",
-    "icon": "https://example.com/dog-icon.png",
+    "image": "/uploads/breeds/breed_1_1704067200000.jpg",
+    "icon": "/uploads/breeds/icon_1_1704067200000.jpg",
     "category": {
       "_id": "category_id",
       "name": "Dogs",
       "slug": "dogs",
-      "image": "https://example.com/dog-category.jpg"
+      "image": "/uploads/pet-categories/category_1_1704067200000.jpg"
     },
     "isActive": true,
     "order": 1,
@@ -250,28 +250,26 @@ Add a new breed. (Admin only)
 
 **Method**: `POST`  
 **Authentication**: Admin required  
-**Content-Type**: `application/json`
+**Content-Type**: `multipart/form-data`
 
-#### Request Body
-```json
-{
-  "name": "Golden Retriever",
-  "description": "Friendly and intelligent breed",
-  "image": "https://example.com/golden-retriever.jpg",
-  "icon": "https://example.com/dog-icon.png",
-  "category": "category_id",
-  "order": 1,
-  "size": "Large",
-  "lifeSpan": "10-12 years",
-  "temperament": ["Friendly", "Intelligent", "Devoted"],
-  "origin": "Scotland",
-  "exerciseNeeds": "High",
-  "groomingNeeds": "Moderate",
-  "popularityRank": 2,
-  "goodWithKids": true,
-  "goodWithPets": true,
-  "hypoallergenic": false
-}
+#### Request Body (Form Data)
+```
+name: "Golden Retriever" (required)
+description: "Friendly and intelligent breed" (required)
+image: [FILE] (required) - Breed main image
+icon: [FILE] (required) - Breed icon
+category: "category_id" (required)
+order: 1 (optional)
+size: "Large" (optional)
+lifeSpan: "10-12 years" (optional)
+temperament: ["Friendly", "Intelligent", "Devoted"] (optional)
+origin: "Scotland" (optional)
+exerciseNeeds: "High" (optional)
+groomingNeeds: "Moderate" (optional)
+popularityRank: 2 (optional)
+goodWithKids: true (optional)
+goodWithPets: true (optional)
+hypoallergenic: false (optional)
 ```
 
 #### Success Response (201)
@@ -283,13 +281,13 @@ Add a new breed. (Admin only)
     "_id": "breed_id",
     "name": "Golden Retriever",
     "description": "Friendly and intelligent breed",
-    "image": "https://example.com/golden-retriever.jpg",
-    "icon": "https://example.com/dog-icon.png",
+    "image": "/uploads/breeds/breed_1_1704067200000.jpg",
+    "icon": "/uploads/breeds/icon_1_1704067200000.jpg",
     "category": {
       "_id": "category_id",
       "name": "Dogs",
       "slug": "dogs",
-      "image": "https://example.com/dog-category.jpg"
+      "image": "/uploads/pet-categories/category_1_1704067200000.jpg"
     },
     "isActive": true,
     "order": 1,
@@ -360,13 +358,13 @@ Update a breed by its ID. (Admin only)
     "_id": "breed_id",
     "name": "Updated Breed",
     "description": "Updated description",
-    "image": "https://example.com/golden-retriever.jpg",
-    "icon": "https://example.com/dog-icon.png",
+    "image": "/uploads/breeds/breed_1_1704067200000.jpg",
+    "icon": "/uploads/breeds/icon_1_1704067200000.jpg",
     "category": {
       "_id": "category_id",
       "name": "Dogs",
       "slug": "dogs",
-      "image": "https://example.com/dog-category.jpg"
+      "image": "/uploads/pet-categories/category_1_1704067200000.jpg"
     },
     "isActive": true,
     "order": 1,

@@ -3,6 +3,46 @@ const router = express.Router();
 const User = require('../models/User');
 const BaseResponse = require('../models/BaseResponse');
 const auth = require('../middleware/auth');
+const { upload, handleUploadError } = require('../utils/fileUpload');
+
+// Upload/Update profile image
+router.put('/image', auth, upload.single('profileImage'), handleUploadError, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json(BaseResponse.error('Profile image file is required'));
+    }
+
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json(BaseResponse.error('User not found'));
+    }
+
+    // Delete old profile image if exists
+    if (user.profileImage) {
+      const fs = require('fs');
+      const path = require('path');
+      const oldImageName = user.profileImage.split('/').pop();
+      const oldImagePath = path.join('./uploads', oldImageName);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    // Update user with new profile image
+    user.profileImage = `/uploads/${req.file.filename}`;
+    await user.save();
+
+    const response = BaseResponse.success('Profile image updated successfully', {
+      profileImage: user.profileImage
+    });
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error updating profile image', error.message);
+    res.status(500).json(response);
+  }
+});
 
 // Update profile
 router.put('/', auth, async (req, res) => {

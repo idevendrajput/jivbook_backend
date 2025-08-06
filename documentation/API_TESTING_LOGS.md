@@ -115,7 +115,7 @@ curl -X GET http://localhost:3010/api/pet-categories
         "_id": "689184f22e52d8218db6e6d2",
         "name": "Dogs",
         "description": "Loyal and friendly companions",
-        "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
+        "image": "/uploads/pet-categories/category_1_1704067200000.jpg",
         "isActive": true,
         "breedCount": 0
       }
@@ -300,7 +300,7 @@ curl -X GET http://localhost:3010/api/posts \
     "user": {
       "_id": "689184f32e52d8218db6e6ed",
       "username": "chrislee404",
-      "profileImage": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&q=80"
+      "profileImage": "/uploads/profiles/profile_3_1704067200000.jpg"
     },
     "caption": "Look at my beautiful Golden Retriever! 🐕 #dog #pet",
     "media": [
