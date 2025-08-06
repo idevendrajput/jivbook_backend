@@ -7,6 +7,7 @@ const Slider = require('../models/Slider');
 const BaseResponse = require('../models/BaseResponse');
 const endpoints = require('../endpoints');
 const adminAuth = require('../middleware/adminAuth');
+const { transformDocumentWithURLs } = require('../utils/urlHelper');
 
 // Multer configuration for slider image uploads
 const storage = multer.diskStorage({
@@ -49,7 +50,11 @@ const upload = multer({
 router.get('/get_all', async (req, res) => {
   try {
     const sliders = await Slider.find({ isActive: true }).sort({ order: 1, createdAt: -1 });
-    const response = BaseResponse.success('Sliders list fetched successfully!', sliders);
+    
+    // Transform all sliders to include complete URLs
+    const slidersWithURLs = sliders.map(slider => transformDocumentWithURLs(slider, ['imageUrl']));
+    
+    const response = BaseResponse.success('Sliders list fetched successfully!', slidersWithURLs);
     res.json(response);
   } catch (error) {
     const response = BaseResponse.error('Server error', error.message);
@@ -61,7 +66,11 @@ router.get('/get_all', async (req, res) => {
 router.get('/admin/get_all', adminAuth, async (req, res) => {
   try {
     const sliders = await Slider.find().sort({ order: 1, createdAt: -1 });
-    const response = BaseResponse.success('All sliders fetched successfully!', sliders);
+    
+    // Transform all sliders to include complete URLs
+    const slidersWithURLs = sliders.map(slider => transformDocumentWithURLs(slider, ['imageUrl']));
+    
+    const response = BaseResponse.success('All sliders fetched successfully!', slidersWithURLs);
     res.json(response);
   } catch (error) {
     console.error('Get all sliders error:', error);
@@ -79,7 +88,7 @@ router.post('/add', adminAuth, upload.single('image'), async (req, res) => {
     }
 
     const { redirectionUrl, order } = req.body;
-    const imageUrl = req.file.filename; // Store only filename, not full path
+    const imageUrl = `sliders/${req.file.filename}`; // Store relative path from uploads
 
     const newSlider = new Slider({
       imageUrl,
@@ -88,7 +97,10 @@ router.post('/add', adminAuth, upload.single('image'), async (req, res) => {
     });
 
     await newSlider.save();
-    const response = BaseResponse.success('Slider saved successfully!', newSlider);
+    
+    // Transform to include complete URL
+    const sliderWithURL = transformDocumentWithURLs(newSlider, ['imageUrl']);
+    const response = BaseResponse.success('Slider saved successfully!', sliderWithURL);
     res.status(201).json(response);
   } catch (error) {
     console.error('Add slider error:', error);
@@ -113,13 +125,15 @@ router.put('/update/:id', adminAuth, upload.single('image'), async (req, res) =>
     
     // If new image is uploaded, update imageUrl
     if (req.file) {
-      updateData.imageUrl = req.file.filename;
+      updateData.imageUrl = `sliders/${req.file.filename}`;
       
-      // Optionally delete old image file
+      // Delete old image file
       if (slider.imageUrl) {
+        // Extract filename from stored path
+        const filename = slider.imageUrl.replace('sliders/', '');
         const oldImagePath = process.env.NODE_ENV === 'production' 
-          ? `/var/www/jivbook_files/sliders/${slider.imageUrl}`
-          : `uploads/sliders/${slider.imageUrl}`;
+          ? `/var/www/jivbook_files/sliders/${filename}`
+          : `uploads/sliders/${filename}`;
         
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
@@ -132,8 +146,10 @@ router.put('/update/:id', adminAuth, upload.single('image'), async (req, res) =>
     if (order !== undefined) updateData.order = order;
 
     const updatedSlider = await Slider.findByIdAndUpdate(id, updateData, { new: true });
-
-    const response = BaseResponse.success('Slider updated successfully!', updatedSlider);
+    
+    // Transform to include complete URL
+    const sliderWithURL = transformDocumentWithURLs(updatedSlider, ['imageUrl']);
+    const response = BaseResponse.success('Slider updated successfully!', sliderWithURL);
     res.json(response);
   } catch (error) {
     console.error('Update slider error:', error);
@@ -155,9 +171,10 @@ router.delete('/delete_by_id', adminAuth, async (req, res) => {
 
     // Delete image file
     if (slider.imageUrl) {
+      const filename = slider.imageUrl.replace('sliders/', '');
       const imagePath = process.env.NODE_ENV === 'production' 
-        ? `/var/www/jivbook_files/sliders/${slider.imageUrl}`
-        : `uploads/sliders/${slider.imageUrl}`;
+        ? `/var/www/jivbook_files/sliders/${filename}`
+        : `uploads/sliders/${filename}`;
         
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
