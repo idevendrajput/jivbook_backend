@@ -83,7 +83,7 @@ exports.getWishlist = async (req, res) => {
             select: 'name username profileImage phone email address' 
           },
           { 
-            path: 'category', 
+            path: 'petCategory', 
             select: 'name slug icon' 
           },
           { 

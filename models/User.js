@@ -90,6 +90,15 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Online status
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+  lastSeen: {
+    type: Date,
+    default: Date.now
+  },
   // Pet preferences based on type
   petTypePreferences: {
     dairyPets: {

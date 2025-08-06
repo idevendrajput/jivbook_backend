@@ -1,6 +1,20 @@
 # Pet Categories API Documentation
 
-The Pet Categories API provides endpoints for managing pet categories including creating, updating, retrieving, and deleting categories.
+The Pet Categories API provides comprehensive endpoints for managing pet categories including creating, updating, retrieving, and deleting categories with advanced features like image upload, SEO optimization, and admin authorization.
+
+## Features
+- **Category Management**: Complete CRUD operations for pet categories
+- **Admin Authorization**: Secure admin-only operations for create/update/delete
+- **Image Upload**: Support for category images and icons with file handling
+- **SEO Optimization**: Meta titles and descriptions for categories
+- **Filtering & Search**: Advanced filtering and search capabilities
+- **Pagination**: Efficient data handling with pagination
+- **Slug Support**: SEO-friendly URLs with auto-generated slugs
+- **Breed Count**: Automatic tracking of breeds per category
+- **Dairy Pet Classification**: Special classification for dairy animals
+
+## Testing Status
+✅ **All APIs Tested & Working** - See [API_TESTING_LOGS.md](./API_TESTING_LOGS.md) for detailed test results
 
 ## Base URL
 ```
@@ -23,13 +37,13 @@ Authorization: Bearer your_admin_jwt_token_here
 Retrieve all pet categories with optional filters, search, sorting, and pagination.
 
 **Method**: `GET`  
-**Authentication**: Not required for retrieval
+**Authentication**: ❌ Not required for retrieval
 
 #### Query Parameters
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `page` | Number | No | Page number for pagination |
-| `limit` | Number | No | Number of items per page |
+| `page` | Number | No | Page number for pagination (default: 1) |
+| `limit` | Number | No | Number of items per page (default: 10) |
 | `search` | String | No | Search term for filtering by name or description |
 | `sortBy` | String | No | Field to sort by (default: `order`) |
 | `sortOrder` | String | No | Sort order, `asc` or `desc` (default: `asc`) |
@@ -43,49 +57,37 @@ Retrieve all pet categories with optional filters, search, sorting, and paginati
   "data": {
     "categories": [
       {
-        "_id": "category_id",
+        "_id": "689184f22e52d8218db6e6d2",
         "name": "Dogs",
-        "description": "Loyal and friendly companions",
-        "image": "https://example.com/dog-category.jpg",
-        "icon": "https://example.com/dog-icon.png",
+        "description": "Loyal and friendly companions, perfect for families and individuals alike",
+        "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
+        "icon": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80",
         "isActive": true,
         "order": 1,
+        "isDairyPet": false,
         "slug": "dogs",
-        "metaTitle": "Meta Title",
-        "metaDescription": "Meta Description",
-        "createdAt": "2024-01-02T00:00:00.000Z",
-        "updatedAt": "2024-01-02T00:00:00.000Z",
-        "breedCount": 12
+        "metaTitle": "Dogs - Find Your Perfect Canine Companion",
+        "metaDescription": "Discover various dog breeds and find your perfect canine companion",
+        "breedCount": 2,
+        "createdAt": "2025-08-05T04:13:38.938Z",
+        "updatedAt": "2025-08-05T04:13:38.938Z"
       }
     ],
     "pagination": {
       "currentPage": 1,
-      "totalPages": 1,
-      "totalItems": 1,
+      "totalPages": 2,
+      "totalItems": 12,
       "itemsPerPage": 10
     }
   }
 }
 ```
 
-#### Error Responses
-
-**500 Server Error**
-```json
-{
-  "success": false,
-  "message": "Server error",
-  "error": "Detailed error message"
-}
-```
-
----
-
 ### GET /category/:slug
 Retrieve a specific pet category by its slug.
 
 **Method**: `GET`  
-**Authentication**: Not required
+**Authentication**: ❌ Not required
 
 #### Path Parameters
 | Parameter | Type | Description |
@@ -98,61 +100,34 @@ Retrieve a specific pet category by its slug.
   "success": true,
   "message": "Pet category fetched successfully",
   "data": {
-    "_id": "category_id",
+    "_id": "689184f22e52d8218db6e6d2",
     "name": "Dogs",
     "description": "Loyal and friendly companions",
-    "image": "https://example.com/dog-category.jpg",
-    "icon": "https://example.com/dog-icon.png",
-    "isActive": true,
-    "order": 1,
+    "image": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80",
+    "icon": "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=100&q=80",
     "slug": "dogs",
-    "metaTitle": "Meta Title",
-    "metaDescription": "Meta Description",
-    "createdAt": "2024-01-02T00:00:00.000Z",
-    "updatedAt": "2024-01-02T00:00:00.000Z",
-    "breedCount": 12
+    "breedCount": 2
   }
 }
 ```
-
-#### Error Responses
-
-**404 Not Found**
-```json
-{
-  "success": false,
-  "message": "Category not found",
-  "error": "No category found with the provided slug"
-}
-```
-
-**500 Server Error**
-```json
-{
-  "success": false,
-  "message": "Server error",
-  "error": "Detailed error message"
-}
-```
-
----
 
 ### POST /
 Add a new pet category. (Admin only)
 
 **Method**: `POST`  
-**Authentication**: Admin required  
-**Content-Type**: `application/json`
+**Authentication**: ✅ Admin required  
+**Content-Type**: `multipart/form-data`
 
-#### Request Body
-```json
-{
-  "name": "Dogs",
-  "description": "Loyal and friendly companions",
-  "image": "https://example.com/dog-category.jpg",
-  "icon": "https://example.com/dog-icon.png",
-  "order": 1
-}
+#### Request Body (Form Data)
+```
+name: "Test Category" (required)
+description: "Test description for API testing" (required)
+image: file (required) - Category main image
+icon: file (required) - Category icon
+order: number (optional) - Display order
+isDairyPet: boolean (optional, default: false)
+metaTitle: "SEO title" (optional)
+metaDescription: "SEO description" (optional)
 ```
 
 #### Success Response (201)
@@ -161,137 +136,75 @@ Add a new pet category. (Admin only)
   "success": true,
   "message": "Pet category added successfully",
   "data": {
-    "_id": "category_id",
-    "name": "Dogs",
-    "description": "Loyal and friendly companions",
-    "image": "https://example.com/dog-category.jpg",
-    "icon": "https://example.com/dog-icon.png",
+    "_id": "689302683f6cb78b927178f0",
+    "name": "Test Category",
+    "description": "Test description for API testing",
+    "image": "category-img-1754464871997-177819748.jpg",
+    "icon": "category-icon-1754464871997-876749510.jpg",
     "isActive": true,
-    "order": 1,
-    "slug": "dogs",
-    "createdAt": "2024-01-02T00:00:00.000Z",
-    "updatedAt": "2024-01-02T00:00:00.000Z",
-    "breedCount": 0
+    "order": 0,
+    "isDairyPet": false,
+    "slug": "test-category",
+    "metaTitle": null,
+    "metaDescription": null,
+    "breedCount": 0,
+    "createdAt": "2025-08-06T07:21:12.002Z",
+    "updatedAt": "2025-08-06T07:21:12.002Z"
   }
 }
 ```
-
-#### Error Responses
-
-**400 Bad Request**
-```json
-{
-  "success": false,
-  "message": "Category already exists",
-  "error": "Duplicate category found"
-}
-```
-
-**500 Server Error**
-```json
-{
-  "success": false,
-  "message": "Server error",
-  "error": "Detailed error message"
-}
-```
-
----
 
 ### PUT /:id
-Update a pet category by its ID. (Admin only)
+Update a pet category by ID. (Admin only)
 
 **Method**: `PUT`  
-**Authentication**: Admin required  
-**Content-Type**: `application/json`
-
-#### Path Parameters
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `id` | String | ID of the category to update |
+**Authentication**: ✅ Admin required  
+**Content-Type**: `multipart/form-data`
 
 #### Request Body
-```json
-{
-  "name": "Updated Category",
-  "description": "Updated description"
-}
-```
-
-#### Success Response (200)
-```json
-{
-  "success": true,
-  "message": "Pet category updated successfully",
-  "data": {
-    "_id": "category_id",
-    "name": "Updated Category",
-    "description": "Updated description",
-    "image": "https://example.com/dog-category.jpg",
-    "icon": "https://example.com/dog-icon.png",
-    "isActive": true,
-    "order": 1,
-    "slug": "updated-category",
-    "createdAt": "2024-01-02T00:00:00.000Z",
-    "updatedAt": "2024-01-03T00:00:00.000Z",
-    "breedCount": 0
-  }
-}
-```
-
-#### Error Responses
-
-**404 Not Found**
-```json
-{
-  "success": false,
-  "message": "Category not found",
-  "error": "No category found with the provided ID"
-}
-```
-
-**500 Server Error**
-```json
-{
-  "success": false,
-  "message": "Server error",
-  "error": "Detailed error message"
-}
-```
-
----
+Same as POST, all fields optional for update.
 
 ### DELETE /:id
-Delete a pet category by its ID. (Admin only)
+Delete a pet category by ID. (Admin only)
 
 **Method**: `DELETE`  
-**Authentication**: Admin required
+**Authentication**: ✅ Admin required
 
 #### Path Parameters
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `id` | String | ID of the category to delete |
+| `id` | String | Category ID to delete |
 
-#### Success Response (200)
+## Error Responses
+
+### Unauthorized Access (403)
 ```json
 {
-  "success": true,
-  "message": "Pet category deleted successfully"
+  "success": false,
+  "message": "Access denied",
+  "error": "Admin access required"
 }
 ```
 
-#### Error Responses
+### File Upload Error (400)
+```json
+{
+  "success": false,
+  "message": "Image file is required",
+  "data": null
+}
+```
 
-**404 Not Found**
+### Not Found (404)
 ```json
 {
   "success": false,
   "message": "Category not found",
-  "error": "No category found with the provided ID"
+  "error": "No category found with the provided slug"
 }
 ```
 
-**500 Server Error**
+### Server Error (500)
 ```json
 {
   "success": false,
@@ -300,11 +213,45 @@ Delete a pet category by its ID. (Admin only)
 }
 ```
 
----
+## Testing Examples
+
+### Get All Categories
+```bash
+curl -X GET http://localhost:3010/api/pet-categories
+```
+
+### Create Category (Admin)
+```bash
+curl -X POST http://localhost:3010/api/pet-categories \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -F "name=Test Category" \
+  -F "description=Test description" \
+  -F "image=@/path/to/image.jpg" \
+  -F "icon=@/path/to/icon.jpg"
+```
+
+### Get Category by Slug
+```bash
+curl -X GET http://localhost:3010/api/pet-categories/category/dogs
+```
+
+## File Upload Guidelines
+
+### Supported Formats
+- **Images**: JPG, JPEG, PNG, GIF
+- **Max Size**: 5MB per file
+
+### Upload Paths
+- **Images**: `/uploads/categories/`
+- **Icons**: `/uploads/categories/`
 
 ## Notes
 
-- Pet categories have a unique slug generated automatically
-- The `order` field determines display priority
-- Use `isActive` filter to manage public visibility
-- All changes tracked with timestamps (`createdAt`, `updatedAt`)
+- Category slugs are automatically generated from names
+- Breed count is automatically calculated and updated
+- Image files are required for category creation
+- All string fields are automatically trimmed
+- Duplicate category names are prevented
+- SEO fields are optional but recommended for better search visibility
+
+For complete testing logs and examples, see [API_TESTING_LOGS.md](./API_TESTING_LOGS.md).

@@ -1,6 +1,15 @@
 # 👤 Profile API Documentation
 
-The Profile API handles user profile management including updating profile information, preferences, and location data.
+The Profile API handles comprehensive user profile management including profile information, preferences, location data, pet preferences, and social features for the Jivbook platform.
+
+## Features
+- **Profile Retrieval**: Get current user or any user's profile
+- **Profile Updates**: Update user information, preferences, and settings
+- **Location Management**: Handle user location and address data
+- **Pet Preferences**: Manage dairy/companion pet preferences
+- **Social Metrics**: Track posts, followers, following counts
+- **Privacy Settings**: Control profile visibility
+- **Image Upload Support**: Profile picture management
 
 ## Base URL
 ```

@@ -21,6 +21,7 @@ module.exports = {
   SLIDER_BASE: '/api/slider',
   SLIDER: {
     GET_ALL: '/get_all',
+    ADMIN_GET_ALL: '/admin/get_all',
     ADD: '/add',
     UPDATE: '/update/:id',
     DELETE: '/delete_by_id',
@@ -63,6 +64,9 @@ module.exports = {
   // Wishlist and Saved Posts endpoints
   WISHLIST_BASE: '/api/wishlist',
   SAVED_POSTS_BASE: '/api/saved-posts',
+  
+  // Chat endpoints
+  CHAT_BASE: '/api/chat',
   
   POST: {
     CREATE: '/',
@@ -115,5 +119,16 @@ module.exports = {
     GET_FILTERED: '/filter',
     CHECK_STATUS: '/status/:postId',
     GET_COUNT: '/count',
+  },
+  
+  CHAT: {
+    CREATE: '/create',
+    GET_USER_CHATS: '/my-chats',
+    GET_MESSAGES: '/:chatId/messages',
+    SEND_MESSAGE: '/:chatId/send',
+    SEND_MEDIA: '/:chatId/send-media',
+    MARK_READ: '/:chatId/mark-read',
+    DELETE_MESSAGE: '/message/:messageId',
+    TOGGLE_BLOCK: '/:chatId/toggle-block',
   },
 };

@@ -1,8 +1,13 @@
 # 🐾 Jivbook Backend
 
-A modern Node.js Express backend with MongoDB for user authentication and profile management. Built with a modular architecture featuring centralized endpoints, route separation, and comprehensive API management for a pet-focused social platform.
+A comprehensive Node.js Express backend with MongoDB for a pet-focused social platform. Features include user authentication, pet listings, social media functionality, real-time chat, wishlist management, and more. Built with modular architecture and extensive API coverage.
 
-## Setup
+## 📚 Documentation
+
+- **[Complete API Documentation](./documentation/API_DOCUMENTATION.md)** - Detailed API reference with examples
+- **[API Testing Logs](./documentation/API_TESTING_LOGS.md)** - Comprehensive testing results and logs
+
+## ⚡ Quick Start
 
 1. Install dependencies:
 ```bash

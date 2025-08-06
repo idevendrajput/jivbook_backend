@@ -1,17 +1,44 @@
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const User = require('../models/User');
+const { upload, handleUploadError } = require('../utils/fileUpload');
 
 // Create a new post
 exports.createPost = async (req, res) => {
   try {
-    const newPost = new Post({
+    const postData = {
       ...req.body,
       user: req.user._id
-    });
+    };
+    
+    // Handle media files if any
+    if (req.files && req.files.length > 0) {
+      postData.media = req.files.map((file, index) => ({
+        type: file.mimetype.startsWith('image/') ? 'image' : 'video',
+        url: file.path,
+        order: index
+      }));
+    }
+    
+    // Handle tags
+    if (req.body.tags && typeof req.body.tags === 'string') {
+      postData.tags = req.body.tags.split(',').map(tag => tag.trim());
+    }
+    
+    // Handle location
+    if (req.body.latitude && req.body.longitude) {
+      postData.location = {
+        name: req.body.location || 'Unknown Location',
+        coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
+      };
+    }
+    
+    const newPost = new Post(postData);
     await newPost.save();
+    
     // Update user's post count
     await User.findByIdAndUpdate(req.user._id, { $inc: { postsCount: 1 } });
+    
     res.status(201).json(newPost);
   } catch (err) {
     res.status(400).json({ error: err.message });
