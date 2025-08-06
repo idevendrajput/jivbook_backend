@@ -132,7 +132,7 @@ router.post('/', auth, upload.fields([
     // Handle uploaded images
     if (req.files && req.files.images && req.files.images.length > 0) {
       petData.images = req.files.images.map((file, index) => ({
-        url: `/uploads/${file.filename}`,
+        url: `/uploads/pets/${file.filename}`,
         filename: file.filename,
         size: file.size,
         isMain: index === 0 // first image as main
@@ -145,7 +145,7 @@ router.post('/', auth, upload.fields([
     if (req.files && req.files.audio && req.files.audio.length > 0) {
       const audioFile = req.files.audio[0];
       petData.audio = {
-        url: `/uploads/${audioFile.filename}`,
+        url: `/uploads/audio/${audioFile.filename}`,
         filename: audioFile.filename,
         size: audioFile.size
       };
@@ -214,7 +214,7 @@ router.put('/:id', auth, upload.fields([
       // Delete old image files
       if (pet.images && pet.images.length > 0) {
         pet.images.forEach(image => {
-          const oldPath = path.join('./uploads', image.filename);
+          const oldPath = path.join('./uploads/pets', image.filename);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
           }
@@ -223,7 +223,7 @@ router.put('/:id', auth, upload.fields([
       
       // Set new images
       updateData.images = req.files.images.map((file, index) => ({
-        url: `/uploads/${file.filename}`,
+        url: `/uploads/pets/${file.filename}`,
         filename: file.filename,
         size: file.size,
         isMain: index === 0
@@ -234,7 +234,7 @@ router.put('/:id', auth, upload.fields([
     if (req.files && req.files.audio && req.files.audio.length > 0) {
       // Delete old audio file
       if (pet.audio && pet.audio.filename) {
-        const oldAudioPath = path.join('./uploads', pet.audio.filename);
+        const oldAudioPath = path.join('./uploads/audio', pet.audio.filename);
         if (fs.existsSync(oldAudioPath)) {
           fs.unlinkSync(oldAudioPath);
         }
@@ -243,7 +243,7 @@ router.put('/:id', auth, upload.fields([
       // Set new audio
       const audioFile = req.files.audio[0];
       updateData.audio = {
-        url: `/uploads/${audioFile.filename}`,
+        url: `/uploads/audio/${audioFile.filename}`,
         filename: audioFile.filename,
         size: audioFile.size
       };
@@ -285,7 +285,7 @@ router.delete('/:id', auth, async (req, res) => {
     // Delete image files
     if (pet.images && pet.images.length > 0) {
       pet.images.forEach(image => {
-        const imagePath = path.join('./uploads', image.filename);
+        const imagePath = path.join('./uploads/pets', image.filename);
         if (fs.existsSync(imagePath)) {
           fs.unlinkSync(imagePath);
         }
@@ -294,7 +294,7 @@ router.delete('/:id', auth, async (req, res) => {
     
     // Delete audio file
     if (pet.audio && pet.audio.filename) {
-      const audioPath = path.join('./uploads', pet.audio.filename);
+      const audioPath = path.join('./uploads/audio', pet.audio.filename);
       if (fs.existsSync(audioPath)) {
         fs.unlinkSync(audioPath);
       }

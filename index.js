@@ -71,8 +71,14 @@ app.use(endpoints.MAP_BASE, mapRoutes);
 const petRoutes = require('./routes/petRoutes');
 app.use('/api', petRoutes);
 
-// Static file serving for uploads
-app.use('/uploads', express.static(process.env.NODE_ENV === 'production' ? '/var/www/jivbook_files' : 'uploads'));
+// Static file serving for uploads - serve from jivbook_files directory
+if (process.env.NODE_ENV === 'production') {
+  // Production: serve from /var/www/jivbook_files
+  app.use('/uploads', express.static('/var/www/jivbook_files'));
+} else {
+  // Development: serve from local uploads directory  
+  app.use('/uploads', express.static('uploads'));
+}
 
 // Seed routes (for database initialization)
 const seedRoutes = require('./routes/seed');

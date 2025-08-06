@@ -95,7 +95,10 @@ const deleteFile = (filePath) => {
 
 // Utility function to get file URL
 const getFileUrl = (filename, type = 'pets') => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NODE_ENV === 'production'
+    ? process.env.API_BASE_URL_PRODUCTION || 'https://api.jivbook.com'
+    : process.env.API_BASE_URL_DEVELOPMENT || 'http://localhost:3010';
+    
   return `${baseUrl}/uploads/${type}/${filename}`;
 };
 
