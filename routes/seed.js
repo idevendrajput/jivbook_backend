@@ -5,10 +5,12 @@ const { seedPetCategories } = require('../seeds/petCategorySeeds');
 const { seedBreeds } = require('../seeds/breedSeeds');
 const { seedUsers } = require('../seeds/userSeeds');
 const { seedPosts, seedComments, seedFollows, seedLikes } = require('../seeds/socialSeeds');
+const { seedPets } = require('../seeds/petSeedsComplete');
 const User = require('../models/User');
 const PetCategory = require('../models/PetCategory');
 const Breed = require('../models/Breed');
 const Slider = require('../models/Slider');
+const Pet = require('../models/Pet');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
 const Follow = require('../models/Follow');
@@ -49,6 +51,7 @@ router.post('/seed/database', async (req, res) => {
         await PetCategory.collection.drop().catch(() => console.log('PetCategory collection doesn\'t exist'));
         await Breed.collection.drop().catch(() => console.log('Breed collection doesn\'t exist'));
         await Slider.collection.drop().catch(() => console.log('Slider collection doesn\'t exist'));
+        await Pet.collection.drop().catch(() => console.log('Pet collection doesn\'t exist'));
         await Post.collection.drop().catch(() => console.log('Post collection doesn\'t exist'));
         await Comment.collection.drop().catch(() => console.log('Comment collection doesn\'t exist'));
         await Follow.collection.drop().catch(() => console.log('Follow collection doesn\'t exist'));
@@ -60,6 +63,7 @@ router.post('/seed/database', async (req, res) => {
         const breeds = await seedBreeds(categories);
         const users = await seedUsers();
         const sliders = await seedSliders();
+        const pets = await seedPets();
         
         // Seed social media data
         const posts = await seedPosts(users);
@@ -69,12 +73,13 @@ router.post('/seed/database', async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'Database seeded successfully with social media data!',
+            message: 'Database seeded successfully with pets and social media data!',
             data: {
                 categoriesSeeded: categories.length,
                 breedsSeeded: breeds.length,
                 usersSeeded: users.length,
                 slidersSeeded: sliders.length,
+                petsSeeded: pets.length,
                 postsSeeded: posts.length,
                 commentsSeeded: comments.length,
                 followsSeeded: follows.length,

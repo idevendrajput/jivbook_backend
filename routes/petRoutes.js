@@ -36,19 +36,20 @@ router.get('/', async (req, res) => {
     // Build filter object
     const filter = {};
     
-    // Active filter (default to true for public, admin can see all)
+    // Available and approved filter (default to true for public, admin can see all)
     if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
+      filter.isAvailable = isActive === 'true';
     } else {
-      filter.isActive = true; // Default for public users
+      filter.isAvailable = true; // Default for public users
+      filter.isApproved = true; // Only show approved pets to public
     }
     
     // Search filter
     if (search) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { address: { $regex: search, $options: 'i' } }
       ];
     }
     
@@ -118,197 +119,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create a new pet with media uploads (Auth required)
-router.post('/', auth, upload.fields([
-  { name: 'images', maxCount: 10 },
-  { name: 'audio', maxCount: 1 }
-]), handleUploadError, async (req, res) => {
-  try {
-    const petData = {
-      ...req.body,
-      owner: req.user._id
-    };
 
-    // Handle uploaded images
-    if (req.files && req.files.images && req.files.images.length > 0) {
-      petData.images = req.files.images.map((file, index) => ({
-        url: `/uploads/pets/${file.filename}`,
-        filename: file.filename,
-        size: file.size,
-        isMain: index === 0 // first image as main
-      }));
-    } else {
-      return res.status(400).json(BaseResponse.error('At least one image is required'));
-    }
-
-    // Handle uploaded audio file
-    if (req.files && req.files.audio && req.files.audio.length > 0) {
-      const audioFile = req.files.audio[0];
-      petData.audio = {
-        url: `/uploads/audio/${audioFile.filename}`,
-        filename: audioFile.filename,
-        size: audioFile.size
-      };
-    }
-
-    const newPet = new Pet(petData);
-    const savedPet = await newPet.save();
-    
-    const response = BaseResponse.success('Pet created successfully', savedPet);
-    res.status(201).json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error creating pet', error.message);
-    res.status(500).json(response);
-  }
-});
-
-// Get a specific pet by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const pet = await Pet.findById(req.params.id)
-      .populate('petCategory')
-      .populate('breed')
-      .populate('owner', 'name email phone profileImage');
-    
-    if (!pet) {
-      const response = BaseResponse.error('Pet not found');
-      return res.status(404).json(response);
-    }
-    
-    // Increment view count
-    await Pet.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } });
-    
-    const response = BaseResponse.success('Pet fetched successfully', pet);
-    res.json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error fetching pet', error.message);
-    res.status(500).json(response);
-  }
-});
-
-// Update pet by ID (Owner or Admin only)
-router.put('/:id', auth, upload.fields([
-  { name: 'images', maxCount: 10 },
-  { name: 'audio', maxCount: 1 }
-]), handleUploadError, async (req, res) => {
-  try {
-    const pet = await Pet.findById(req.params.id);
-    
-    if (!pet) {
-      const response = BaseResponse.error('Pet not found');
-      return res.status(404).json(response);
-    }
-    
-    // Check if user is owner or admin
-    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can update');
-      return res.status(403).json(response);
-    }
-    
-    const updateData = req.body;
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Handle new uploaded images
-    if (req.files && req.files.images && req.files.images.length > 0) {
-      // Delete old image files
-      if (pet.images && pet.images.length > 0) {
-        pet.images.forEach(image => {
-          const oldPath = path.join('./uploads/pets', image.filename);
-          if (fs.existsSync(oldPath)) {
-            fs.unlinkSync(oldPath);
-          }
-        });
-      }
-      
-      // Set new images
-      updateData.images = req.files.images.map((file, index) => ({
-        url: `/uploads/pets/${file.filename}`,
-        filename: file.filename,
-        size: file.size,
-        isMain: index === 0
-      }));
-    }
-    
-    // Handle new uploaded audio
-    if (req.files && req.files.audio && req.files.audio.length > 0) {
-      // Delete old audio file
-      if (pet.audio && pet.audio.filename) {
-        const oldAudioPath = path.join('./uploads/audio', pet.audio.filename);
-        if (fs.existsSync(oldAudioPath)) {
-          fs.unlinkSync(oldAudioPath);
-        }
-      }
-      
-      // Set new audio
-      const audioFile = req.files.audio[0];
-      updateData.audio = {
-        url: `/uploads/audio/${audioFile.filename}`,
-        filename: audioFile.filename,
-        size: audioFile.size
-      };
-    }
-    
-    const updatedPet = await Pet.findByIdAndUpdate(req.params.id, updateData, { new: true })
-      .populate('petCategory')
-      .populate('breed')
-      .populate('owner', 'name email phone');
-    
-    const response = BaseResponse.success('Pet updated successfully', updatedPet);
-    res.json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error updating pet', error.message);
-    res.status(500).json(response);
-  }
-});
-
-// Delete pet by ID (Owner or Admin only)
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const pet = await Pet.findById(req.params.id);
-    
-    if (!pet) {
-      const response = BaseResponse.error('Pet not found');
-      return res.status(404).json(response);
-    }
-    
-    // Check if user is owner or admin
-    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can delete');
-      return res.status(403).json(response);
-    }
-    
-    // Delete associated media files
-    const fs = require('fs');
-    const path = require('path');
-    
-    // Delete image files
-    if (pet.images && pet.images.length > 0) {
-      pet.images.forEach(image => {
-        const imagePath = path.join('./uploads/pets', image.filename);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-      });
-    }
-    
-    // Delete audio file
-    if (pet.audio && pet.audio.filename) {
-      const audioPath = path.join('./uploads/audio', pet.audio.filename);
-      if (fs.existsSync(audioPath)) {
-        fs.unlinkSync(audioPath);
-      }
-    }
-    
-    await Pet.findByIdAndDelete(req.params.id);
-    
-    const response = BaseResponse.success('Pet deleted successfully');
-    res.json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error deleting pet', error.message);
-    res.status(500).json(response);
-  }
-});
 
 // Get nearby pets based on user location
 router.get('/nearby', async (req, res) => {
@@ -606,6 +417,200 @@ router.get('/recommended', auth, async (req, res) => {
     res.status(500).json(response);
   }
 });
+
+// Create a new pet with media uploads (Auth required)
+router.post('/', auth, upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'audio', maxCount: 1 }
+]), handleUploadError, async (req, res) => {
+  try {
+    const petData = {
+      ...req.body,
+      owner: req.user._id
+    };
+
+    // Handle uploaded images
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      petData.images = req.files.images.map((file, index) => ({
+        url: `/uploads/pets/${file.filename}`,
+        filename: file.filename,
+        size: file.size,
+        isMain: index === 0 // first image as main
+      }));
+    } else {
+      return res.status(400).json(BaseResponse.error('At least one image is required'));
+    }
+
+    // Handle uploaded audio file
+    if (req.files && req.files.audio && req.files.audio.length > 0) {
+      const audioFile = req.files.audio[0];
+      petData.audio = {
+        url: `/uploads/audio/${audioFile.filename}`,
+        filename: audioFile.filename,
+        size: audioFile.size
+      };
+    }
+
+    const newPet = new Pet(petData);
+    const savedPet = await newPet.save();
+    
+    const response = BaseResponse.success('Pet created successfully', savedPet);
+    res.status(201).json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error creating pet', error.message);
+    res.status(500).json(response);
+  }
+});
+
+
+// Get a specific pet by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const pet = await Pet.findById(req.params.id)
+      .populate('petCategory')
+      .populate('breed')
+      .populate('owner', 'name email phone profileImage');
+    
+    if (!pet) {
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
+    }
+    
+    // Increment view count
+    await Pet.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } });
+    
+    const response = BaseResponse.success('Pet fetched successfully', pet);
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error fetching pet', error.message);
+    res.status(500).json(response);
+  }
+});
+
+// Update pet by ID (Owner or Admin only)
+router.put('/:id', auth, upload.fields([
+  { name: 'images', maxCount: 10 },
+  { name: 'audio', maxCount: 1 }
+]), handleUploadError, async (req, res) => {
+  try {
+    const pet = await Pet.findById(req.params.id);
+    
+    if (!pet) {
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
+    }
+    
+    // Check if user is owner or admin
+    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can update');
+      return res.status(403).json(response);
+    }
+    
+    const updateData = req.body;
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Handle new uploaded images
+    if (req.files && req.files.images && req.files.images.length > 0) {
+      // Delete old image files
+      if (pet.images && pet.images.length > 0) {
+        pet.images.forEach(image => {
+          const oldPath = path.join('./uploads/pets', image.filename);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
+        });
+      }
+      
+      // Set new images
+      updateData.images = req.files.images.map((file, index) => ({
+        url: `/uploads/pets/${file.filename}`,
+        filename: file.filename,
+        size: file.size,
+        isMain: index === 0
+      }));
+    }
+    
+    // Handle new uploaded audio
+    if (req.files && req.files.audio && req.files.audio.length > 0) {
+      // Delete old audio file
+      if (pet.audio && pet.audio.filename) {
+        const oldAudioPath = path.join('./uploads/audio', pet.audio.filename);
+        if (fs.existsSync(oldAudioPath)) {
+          fs.unlinkSync(oldAudioPath);
+        }
+      }
+      
+      // Set new audio
+      const audioFile = req.files.audio[0];
+      updateData.audio = {
+        url: `/uploads/audio/${audioFile.filename}`,
+        filename: audioFile.filename,
+        size: audioFile.size
+      };
+    }
+    
+    const updatedPet = await Pet.findByIdAndUpdate(req.params.id, updateData, { new: true })
+      .populate('petCategory')
+      .populate('breed')
+      .populate('owner', 'name email phone');
+    
+    const response = BaseResponse.success('Pet updated successfully', updatedPet);
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error updating pet', error.message);
+    res.status(500).json(response);
+  }
+});
+
+// Delete pet by ID (Owner or Admin only)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const pet = await Pet.findById(req.params.id);
+    
+    if (!pet) {
+      const response = BaseResponse.error('Pet not found');
+      return res.status(404).json(response);
+    }
+    
+    // Check if user is owner or admin
+    if (pet.owner.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      const response = BaseResponse.error('Access denied', 'Only pet owner or admin can delete');
+      return res.status(403).json(response);
+    }
+    
+    // Delete associated media files
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Delete image files
+    if (pet.images && pet.images.length > 0) {
+      pet.images.forEach(image => {
+        const imagePath = path.join('./uploads/pets', image.filename);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      });
+    }
+    
+    // Delete audio file
+    if (pet.audio && pet.audio.filename) {
+      const audioPath = path.join('./uploads/audio', pet.audio.filename);
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
+    }
+    
+    await Pet.findByIdAndDelete(req.params.id);
+    
+    const response = BaseResponse.success('Pet deleted successfully');
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error deleting pet', error.message);
+    res.status(500).json(response);
+  }
+});
+
 
 // Helper functions to get pet category IDs
 async function getDairyPetCategoryIds() {

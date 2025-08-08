@@ -69,7 +69,7 @@ app.use(endpoints.MAP_BASE, mapRoutes);
 
 // Pet routes
 const petRoutes = require('./routes/petRoutes');
-app.use('/api', petRoutes);
+app.use('/api/pets', petRoutes);
 
 // Static file serving for uploads - serve from jivbook_files directory
 if (process.env.NODE_ENV === 'production') {
