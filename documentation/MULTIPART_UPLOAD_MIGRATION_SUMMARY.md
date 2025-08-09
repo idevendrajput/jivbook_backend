@@ -37,6 +37,14 @@
 ### 7. **API_TESTING_LOGS.md** - Test Response Updates
 - ✅ सभी test responses में URLs को server paths में update किया
 - ✅ Consistent file path format across all examples
+- ✅ Pets API tests updated with nearby and recommended endpoints
+
+### 8. **pets.md** - Complete Smart API Updates
+- ✅ Nearby pets API with fallback radius expansion (10km → 25km → 50km → 100km → 200km → unlimited)
+- ✅ Recommended pets API with user preferences, dairy/companion pets, and fallback logic
+- ✅ Detailed response examples with distance calculations and recommendation basis
+- ✅ Updated route paths from `/api/nearby` to `/api/pets/nearby`
+- ✅ Authentication requirements and smart filtering documented
 
 ## 📁 File Upload Specifications
 

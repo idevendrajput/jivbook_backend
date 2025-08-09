@@ -801,8 +801,8 @@ Update pet (requires authentication, owner only)
 ### DELETE /api/pets/:id
 Delete pet (requires authentication, owner only)
 
-### GET /api/nearby
-Get nearby pets based on location
+### GET /api/pets/nearby
+Get nearby pets based on location with intelligent fallback radius expansion
 
 **Query Parameters:**
 - `latitude`: User latitude (required)
@@ -811,6 +811,77 @@ Get nearby pets based on location
 - `page`: Page number (default: 1)
 - `limit`: Items per page (default: 10)
 - `petCategory`: Filter by category
+- `minPrice`: Minimum price filter
+- `maxPrice`: Maximum price filter
+
+**Smart Fallback:** If no pets found within specified radius, automatically expands search to 25km, 50km, 100km, 200km, and finally unlimited range.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Nearby pets fetched successfully",
+  "data": {
+    "pets": [
+      {
+        "_id": "pet_id",
+        "title": "Golden Retriever Puppy",
+        "price": 15000,
+        "address": "Sector 18, Noida",
+        "distanceKm": 2.5,
+        "petCategory": {
+          "name": "Dogs"
+        },
+        "owner": {
+          "name": "John Doe",
+          "phone": "+91-9876543210"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalItems": 25,
+      "itemsPerPage": 10
+    },
+    "searchRadius": "10 km",
+    "originalRadius": "10 km",
+    "fallbackUsed": false
+  }
+}
+```
+
+### GET /api/pets/recommended
+Get recommended pets based on user preferences (requires authentication)
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 10)
+
+**Recommendation Logic:**
+- User's preferred pet categories
+- Dairy pets preference (if enabled)
+- Companion pets preference (if enabled)
+- Popular/trending pets (premium, high views, recent)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Recommended pets fetched successfully",
+  "data": {
+    "pets": [...],
+    "pagination": {...},
+    "recommendationBasis": {
+      "userPreferences": true,
+      "locationBased": true,
+      "dairyPetsPreference": false,
+      "companionPetsPreference": true,
+      "fallbackUsed": false
+    }
+  }
+}
+```
 
 ---
 

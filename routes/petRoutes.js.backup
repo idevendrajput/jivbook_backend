@@ -15,390 +15,6 @@ const adminAuth = (req, res, next) => {
   res.status(403).json(response);
 };
 
-// Get nearby pets based on user location
-router.get('/nearby', async (req, res) => {
-  try {
-    const { 
-      latitude, 
-      longitude, 
-      radius = 10, // radius in kilometers
-      page = 1,
-      limit = 10,
-      petCategory,
-      minPrice,
-      maxPrice
-    } = req.query;
-    
-    if (!latitude || !longitude) {
-      const response = BaseResponse.error('Latitude and longitude are required');
-      return res.status(400).json(response);
-    }
-    
-    // Build filter object
-    const filter = {
-      isAvailable: true,
-      isApproved: true
-    };
-    
-    // Add category filter if provided
-    if (petCategory) {
-      filter.petCategory = petCategory;
-    }
-    
-    // Add price range filter if provided
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = parseFloat(minPrice);
-      if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
-    }
-    
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Use MongoDB's aggregation pipeline to calculate distance
-    let nearbyPets = await Pet.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
-          },
-          distanceField: "distance",
-          maxDistance: radius * 1000, // Convert km to meters
-          spherical: true,
-          query: filter
-        }
-      },
-      {
-        $lookup: {
-          from: "petcategories",
-          localField: "petCategory",
-          foreignField: "_id",
-          as: "petCategory"
-        }
-      },
-      {
-        $lookup: {
-          from: "breeds",
-          localField: "breed",
-          foreignField: "_id",
-          as: "breed"
-        }
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "owner",
-          foreignField: "_id",
-          as: "owner",
-          pipeline: [{ $project: { name: 1, email: 1, phone: 1 } }]
-        }
-      },
-      {
-        $unwind: { path: "$petCategory", preserveNullAndEmptyArrays: true }
-      },
-      {
-        $unwind: { path: "$breed", preserveNullAndEmptyArrays: true }
-      },
-      {
-        $unwind: { path: "$owner", preserveNullAndEmptyArrays: true }
-      },
-      {
-        $addFields: {
-          distanceKm: { $divide: ["$distance", 1000] } // Convert meters to km
-        }
-      },
-      { $skip: skip },
-      { $limit: parseInt(limit) }
-    ]);
-    
-    // Get total count for pagination
-    const totalPipeline = [
-      {
-        $geoNear: {
-          near: {
-            type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
-          },
-          distanceField: "distance",
-          maxDistance: radius * 1000,
-          spherical: true,
-          query: filter
-        }
-      },
-      { $count: "total" }
-    ];
-    
-    const totalResult = await Pet.aggregate(totalPipeline);
-    let total = totalResult.length > 0 ? totalResult[0].total : 0;
-    let actualRadius = radius;
-    let fallbackUsed = false;
-    
-    // Fallback: If no pets found in given radius, expand search radius
-    if (nearbyPets.length === 0 && total === 0) {
-      const expandedRadii = [25, 50, 100, 200]; // Progressive radius expansion in km
-      
-      for (const expandedRadius of expandedRadii) {
-        try {
-          // Try with expanded radius
-          const expandedNearbyPets = await Pet.aggregate([
-            {
-              $geoNear: {
-                near: {
-                  type: "Point",
-                  coordinates: [parseFloat(longitude), parseFloat(latitude)]
-                },
-                distanceField: "distance",
-                maxDistance: expandedRadius * 1000, // Convert km to meters
-                spherical: true,
-                query: filter
-              }
-            },
-            {
-              $lookup: {
-                from: "petcategories",
-                localField: "petCategory",
-                foreignField: "_id",
-                as: "petCategory"
-              }
-            },
-            {
-              $lookup: {
-                from: "breeds",
-                localField: "breed",
-                foreignField: "_id",
-                as: "breed"
-              }
-            },
-            {
-              $lookup: {
-                from: "users",
-                localField: "owner",
-                foreignField: "_id",
-                as: "owner",
-                pipeline: [{ $project: { name: 1, email: 1, phone: 1 } }]
-              }
-            },
-            {
-              $unwind: { path: "$petCategory", preserveNullAndEmptyArrays: true }
-            },
-            {
-              $unwind: { path: "$breed", preserveNullAndEmptyArrays: true }
-            },
-            {
-              $unwind: { path: "$owner", preserveNullAndEmptyArrays: true }
-            },
-            {
-              $addFields: {
-                distanceKm: { $divide: ["$distance", 1000] } // Convert meters to km
-              }
-            },
-            { $skip: skip },
-            { $limit: parseInt(limit) }
-          ]);
-          
-          if (expandedNearbyPets.length > 0) {
-            nearbyPets = expandedNearbyPets;
-            actualRadius = expandedRadius;
-            fallbackUsed = true;
-            
-            // Get updated total count
-            const expandedTotalPipeline = [
-              {
-                $geoNear: {
-                  near: {
-                    type: "Point",
-                    coordinates: [parseFloat(longitude), parseFloat(latitude)]
-                  },
-                  distanceField: "distance",
-                  maxDistance: expandedRadius * 1000,
-                  spherical: true,
-                  query: filter
-                }
-              },
-              { $count: "total" }
-            ];
-            
-            const expandedTotalResult = await Pet.aggregate(expandedTotalPipeline);
-            total = expandedTotalResult.length > 0 ? expandedTotalResult[0].total : 0;
-            break; // Found results, exit the loop
-          }
-        } catch (geoError) {
-          console.log(`Geo query failed for radius ${expandedRadius}km:`, geoError.message);
-          continue; // Try next radius or fall back to non-geo query
-        }
-      }
-      
-      // Ultimate fallback: If geo queries still fail, use regular find without geo
-      if (nearbyPets.length === 0 && total === 0) {
-        const basicFilter = {
-          isAvailable: true,
-          isApproved: true
-        };
-        
-        // Add category filter if provided
-        if (petCategory) {
-          basicFilter.petCategory = petCategory;
-        }
-        
-        // Add price range filter if provided
-        if (minPrice || maxPrice) {
-          basicFilter.price = {};
-          if (minPrice) basicFilter.price.$gte = parseFloat(minPrice);
-          if (maxPrice) basicFilter.price.$lte = parseFloat(maxPrice);
-        }
-        
-        nearbyPets = await Pet.find(basicFilter)
-          .populate('petCategory')
-          .populate('breed')
-          .populate('owner', 'name email phone')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(limit));
-        
-        total = await Pet.countDocuments(basicFilter);
-        actualRadius = 'unlimited';
-        fallbackUsed = true;
-      }
-    }
-    
-    const response = BaseResponse.success('Nearby pets fetched successfully', {
-      pets: nearbyPets,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalItems: total,
-        itemsPerPage: parseInt(limit)
-      },
-      searchRadius: `${actualRadius} km`,
-      originalRadius: `${radius} km`,
-      fallbackUsed: fallbackUsed
-    });
-    
-    res.json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error fetching nearby pets', error.message);
-    res.status(500).json(response);
-  }
-});
-
-// Get recommended pets based on user preferences and behavior
-router.get('/recommended', auth, async (req, res) => {
-  try {
-    const { page = 1, limit = 10 } = req.query;
-    const user = req.user;
-    
-    // Build recommendation filters based on user preferences
-    const recommendationFilters = [];
-    
-    // Filter by user's preferred pet categories
-    if (user.preferredPetCategories && user.preferredPetCategories.length > 0) {
-      recommendationFilters.push({
-        petCategory: { $in: user.preferredPetCategories }
-      });
-    }
-    
-    // Filter by dairy pets preference
-    if (user.petTypePreferences && user.petTypePreferences.dairyPets) {
-      recommendationFilters.push({
-        $or: [
-          { 'dairyDetails.milkProduction.value': { $gt: 0 } },
-          { petCategory: { $in: await getDairyPetCategoryIds() } }
-        ]
-      });
-    }
-    
-    // Filter by companion pets preference
-    if (user.petTypePreferences && user.petTypePreferences.companionPets) {
-      recommendationFilters.push({
-        $or: [
-          { 'companionDetails.goodWithKids': true },
-          { 'companionDetails.temperament': 'friendly' },
-          { petCategory: { $in: await getCompanionPetCategoryIds() } }
-        ]
-      });
-    }
-    
-    // If no specific preferences, show popular/trending pets
-    if (recommendationFilters.length === 0) {
-      recommendationFilters.push({
-        $or: [
-          { isPremium: true },
-          { viewCount: { $gte: 5 } }, // Reduced from 10 to 5
-          { contactCount: { $gte: 2 } }, // Reduced from 5 to 2
-          { createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } // Recent pets (last 30 days)
-        ]
-      });
-    }
-    
-    // Base filter for active and approved pets
-    let baseFilter = {
-      isAvailable: true,
-      isApproved: true
-    };
-    
-    // Add recommendation filters only if they exist
-    if (recommendationFilters.length > 0) {
-      baseFilter.$or = recommendationFilters;
-    }
-    
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    // Use regular query for recommendations (temporarily avoiding geo queries)
-    let recommendedPets = await Pet.find(baseFilter)
-      .populate('petCategory')
-      .populate('breed')
-      .populate('owner', 'name email phone')
-      .sort({ isPremium: -1, viewCount: -1, contactCount: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-    
-    // Get total count for pagination
-    let total = await Pet.countDocuments(baseFilter);
-    
-    // Fallback: If no pets found with current criteria, show all available pets
-    if (recommendedPets.length === 0 && total === 0) {
-      const fallbackFilter = {
-        isAvailable: true,
-        isApproved: true
-      };
-      
-      recommendedPets = await Pet.find(fallbackFilter)
-        .populate('petCategory')
-        .populate('breed')
-        .populate('owner', 'name email phone')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit));
-      
-      total = await Pet.countDocuments(fallbackFilter);
-    }
-    
-    const response = BaseResponse.success('Recommended pets fetched successfully', {
-      pets: recommendedPets,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
-        totalItems: total,
-        itemsPerPage: parseInt(limit)
-      },
-      recommendationBasis: {
-        userPreferences: user.preferredPetCategories?.length > 0,
-        locationBased: !!(user.latitude && user.longitude),
-        dairyPetsPreference: user.petTypePreferences?.dairyPets || false,
-        companionPetsPreference: user.petTypePreferences?.companionPets || false,
-        fallbackUsed: recommendedPets.length > 0 && total > 0
-      }
-    });
-    
-    res.json(response);
-  } catch (error) {
-    const response = BaseResponse.error('Error fetching recommended pets', error.message);
-    res.status(500).json(response);
-  }
-});
-
 // Get all pets with filters and pagination (public and admin)
 router.get('/', async (req, res) => {
   try {
@@ -503,6 +119,305 @@ router.get('/', async (req, res) => {
   }
 });
 
+
+
+// Get nearby pets based on user location
+router.get('/nearby', async (req, res) => {
+  try {
+    const { 
+      latitude, 
+      longitude, 
+      radius = 10, // radius in kilometers
+      page = 1,
+      limit = 10,
+      petCategory,
+      minPrice,
+      maxPrice
+    } = req.query;
+    
+    if (!latitude || !longitude) {
+      const response = BaseResponse.error('Latitude and longitude are required');
+      return res.status(400).json(response);
+    }
+    
+    // Build filter object
+    const filter = {
+      isAvailable: true,
+      isApproved: true
+    };
+    
+    // Add category filter if provided
+    if (petCategory) {
+      filter.petCategory = petCategory;
+    }
+    
+    // Add price range filter if provided
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = parseFloat(minPrice);
+      if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
+    }
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Use MongoDB's aggregation pipeline to calculate distance
+    const nearbyPets = await Pet.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          distanceField: "distance",
+          maxDistance: radius * 1000, // Convert km to meters
+          spherical: true,
+          query: filter
+        }
+      },
+      {
+        $lookup: {
+          from: "petcategories",
+          localField: "petCategory",
+          foreignField: "_id",
+          as: "petCategory"
+        }
+      },
+      {
+        $lookup: {
+          from: "breeds",
+          localField: "breed",
+          foreignField: "_id",
+          as: "breed"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "owner",
+          foreignField: "_id",
+          as: "owner",
+          pipeline: [{ $project: { name: 1, email: 1, phone: 1 } }]
+        }
+      },
+      {
+        $unwind: { path: "$petCategory", preserveNullAndEmptyArrays: true }
+      },
+      {
+        $unwind: { path: "$breed", preserveNullAndEmptyArrays: true }
+      },
+      {
+        $unwind: { path: "$owner", preserveNullAndEmptyArrays: true }
+      },
+      {
+        $addFields: {
+          distanceKm: { $divide: ["$distance", 1000] } // Convert meters to km
+        }
+      },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
+    ]);
+    
+    // Get total count for pagination
+    const totalPipeline = [
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          distanceField: "distance",
+          maxDistance: radius * 1000,
+          spherical: true,
+          query: filter
+        }
+      },
+      { $count: "total" }
+    ];
+    
+    const totalResult = await Pet.aggregate(totalPipeline);
+    const total = totalResult.length > 0 ? totalResult[0].total : 0;
+    
+    const response = BaseResponse.success('Nearby pets fetched successfully', {
+      pets: nearbyPets,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      },
+      searchRadius: `${radius} km`
+    });
+    
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error fetching nearby pets', error.message);
+    res.status(500).json(response);
+  }
+});
+
+// Get recommended pets based on user preferences and behavior
+router.get('/recommended', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const user = req.user;
+    
+    // Build recommendation filters based on user preferences
+    const recommendationFilters = [];
+    
+    // Filter by user's preferred pet categories
+    if (user.preferredPetCategories && user.preferredPetCategories.length > 0) {
+      recommendationFilters.push({
+        petCategory: { $in: user.preferredPetCategories }
+      });
+    }
+    
+    // Filter by dairy pets preference
+    if (user.petTypePreferences && user.petTypePreferences.dairyPets) {
+      recommendationFilters.push({
+        $or: [
+          { 'dairyDetails.milkProduction.value': { $gt: 0 } },
+          { petCategory: { $in: await getDairyPetCategoryIds() } }
+        ]
+      });
+    }
+    
+    // Filter by companion pets preference
+    if (user.petTypePreferences && user.petTypePreferences.companionPets) {
+      recommendationFilters.push({
+        $or: [
+          { 'companionDetails.goodWithKids': true },
+          { 'companionDetails.temperament': 'friendly' },
+          { petCategory: { $in: await getCompanionPetCategoryIds() } }
+        ]
+      });
+    }
+    
+    // If no specific preferences, show popular/trending pets
+    if (recommendationFilters.length === 0) {
+      recommendationFilters.push({
+        $or: [
+          { isPremium: true },
+          { viewCount: { $gte: 10 } },
+          { contactCount: { $gte: 5 } }
+        ]
+      });
+    }
+    
+    // Base filter for active and approved pets
+    const baseFilter = {
+      isAvailable: true,
+      isApproved: true,
+      $or: recommendationFilters
+    };
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // If user has location, prioritize nearby pets in recommendations
+    let recommendedPets;
+    if (user.latitude && user.longitude) {
+      recommendedPets = await Pet.aggregate([
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [user.longitude, user.latitude]
+            },
+            distanceField: "distance",
+            maxDistance: 50000, // 50 km for recommendations
+            spherical: true,
+            query: baseFilter
+          }
+        },
+        {
+          $lookup: {
+            from: "petcategories",
+            localField: "petCategory",
+            foreignField: "_id",
+            as: "petCategory"
+          }
+        },
+        {
+          $lookup: {
+            from: "breeds",
+            localField: "breed",
+            foreignField: "_id",
+            as: "breed"
+          }
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "owner",
+            foreignField: "_id",
+            as: "owner",
+            pipeline: [{ $project: { name: 1, email: 1, phone: 1 } }]
+          }
+        },
+        {
+          $unwind: { path: "$petCategory", preserveNullAndEmptyArrays: true }
+        },
+        {
+          $unwind: { path: "$breed", preserveNullAndEmptyArrays: true }
+        },
+        {
+          $unwind: { path: "$owner", preserveNullAndEmptyArrays: true }
+        },
+        {
+          $addFields: {
+            distanceKm: { $divide: ["$distance", 1000] },
+            recommendationScore: {
+              $add: [
+                { $cond: [{ $eq: ["$isPremium", true] }, 10, 0] },
+                { $divide: ["$viewCount", 10] },
+                { $divide: ["$contactCount", 2] },
+                { $divide: [{ $subtract: [new Date(), "$createdAt"] }, 86400000] } // Newer pets get higher score
+              ]
+            }
+          }
+        },
+        { $sort: { recommendationScore: -1, distance: 1 } },
+        { $skip: skip },
+        { $limit: parseInt(limit) }
+      ]);
+    } else {
+      // If no user location, just use regular query with recommendation scoring
+      recommendedPets = await Pet.find(baseFilter)
+        .populate('petCategory')
+        .populate('breed')
+        .populate('owner', 'name email phone')
+        .sort({ isPremium: -1, viewCount: -1, contactCount: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+    }
+    
+    // Get total count for pagination
+    const total = await Pet.countDocuments(baseFilter);
+    
+    const response = BaseResponse.success('Recommended pets fetched successfully', {
+      pets: recommendedPets,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      },
+      recommendationBasis: {
+        userPreferences: user.preferredPetCategories?.length > 0,
+        locationBased: !!(user.latitude && user.longitude),
+        dairyPetsPreference: user.petTypePreferences?.dairyPets || false,
+        companionPetsPreference: user.petTypePreferences?.companionPets || false
+      }
+    });
+    
+    res.json(response);
+  } catch (error) {
+    const response = BaseResponse.error('Error fetching recommended pets', error.message);
+    res.status(500).json(response);
+  }
+});
+
 // Create a new pet with media uploads (Auth required)
 router.post('/', auth, upload.fields([
   { name: 'images', maxCount: 10 },
@@ -546,6 +461,7 @@ router.post('/', auth, upload.fields([
     res.status(500).json(response);
   }
 });
+
 
 // Get a specific pet by ID
 router.get('/:id', async (req, res) => {

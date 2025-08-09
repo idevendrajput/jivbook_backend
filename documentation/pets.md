@@ -96,19 +96,118 @@ API documentation for managing and accessing pet data, location-based searches, 
 ### Get Nearby Pets
 - **URL**: `/api/pets/nearby`
 - **Method**: `GET`
-- **Description**: Find pets near a specific location using latitude and longitude.
+- **Description**: Find pets near a specific location using latitude and longitude with intelligent fallback radius expansion.
 - **Parameters**:
   - `latitude` & `longitude`: Required user location.
   - `radius`: Optional search radius in kilometers (default 10).
+  - `page`: Page number for pagination (default 1).
+  - `limit`: Items per page (default 10).
   - Additional filters: `petCategory`, `minPrice`, `maxPrice`.
-- **Response Format**: Returns nearby pets with distance in kilometers.
+- **Smart Fallback**: If no pets found within specified radius, automatically expands search to 25km, 50km, 100km, 200km, and finally unlimited range.
+- **Response Format**: Returns nearby pets with distance in kilometers, includes fallback information.
 
 ### Get Recommended Pets
 - **URL**: `/api/pets/recommended`
 - **Method**: `GET`
-- **Description**: Fetch recommended pets based on user preferences and location (requires authentication).
-- **Parameters**: Standard pagination.
-- **Response Format**: Returns recommended pets.
+- **Authentication**: Required (JWT token)
+- **Description**: Fetch recommended pets based on user preferences, behavior, and location with intelligent fallback.
+- **Parameters**: 
+  - `page`: Page number for pagination (default 1).
+  - `limit`: Items per page (default 10).
+- **Recommendation Logic**: 
+  - User's preferred pet categories
+  - Dairy pets preference (if enabled)
+  - Companion pets preference (if enabled)
+  - Popular/trending pets (premium, high views, recent)
+- **Smart Fallback**: If no pets match user preferences, shows all available pets.
+- **Response Format**: Returns recommended pets with recommendation basis details.
+
+## Example API Responses
+
+### Nearby Pets Response
+```json
+{
+  "success": true,
+  "message": "Nearby pets fetched successfully",
+  "data": {
+    "pets": [
+      {
+        "_id": "pet_id_1",
+        "title": "Golden Retriever Puppy",
+        "description": "Friendly and well-trained puppy",
+        "price": 15000,
+        "address": "Sector 18, Noida, UP",
+        "distanceKm": 2.5,
+        "petCategory": {
+          "_id": "category_id",
+          "name": "Dogs"
+        },
+        "owner": {
+          "_id": "owner_id",
+          "name": "John Doe",
+          "phone": "+91-9876543210"
+        },
+        "images": [
+          {
+            "url": "/uploads/pets/pet-1640995200-123456789.jpg",
+            "isMain": true
+          }
+        ]
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 3,
+      "totalItems": 25,
+      "itemsPerPage": 10
+    },
+    "searchRadius": "10 km",
+    "originalRadius": "10 km",
+    "fallbackUsed": false
+  }
+}
+```
+
+### Recommended Pets Response
+```json
+{
+  "success": true,
+  "message": "Recommended pets fetched successfully",
+  "data": {
+    "pets": [
+      {
+        "_id": "pet_id_2",
+        "title": "Persian Cat",
+        "description": "Beautiful Persian cat, well-groomed",
+        "price": 8000,
+        "isPremium": true,
+        "viewCount": 25,
+        "petCategory": {
+          "_id": "cat_category_id",
+          "name": "Cats"
+        },
+        "companionDetails": {
+          "goodWithKids": true,
+          "temperament": "friendly"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 2,
+      "totalItems": 15,
+      "itemsPerPage": 10
+    },
+    "recommendationBasis": {
+      "userPreferences": true,
+      "locationBased": true,
+      "dairyPetsPreference": false,
+      "companionPetsPreference": true,
+      "fallbackUsed": false
+    }
+  }
+}
+```
 
 ## Example Response Format
 

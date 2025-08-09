@@ -460,7 +460,7 @@ curl -X GET http://localhost:3010/api/feed \
 
 ### Get All Pets
 ```bash
-curl -X GET "http://localhost:3010/api?page=1&limit=5"
+curl -X GET "http://localhost:3010/api/pets?page=1&limit=5"
 ```
 
 **Response:**
@@ -469,12 +469,127 @@ curl -X GET "http://localhost:3010/api?page=1&limit=5"
   "success": true,
   "message": "Pets fetched successfully",
   "data": {
-    "pets": [],
+    "pets": [
+      {
+        "_id": "689302f93f6cb78b9271795f",
+        "title": "Golden Retriever Puppy",
+        "description": "Friendly and well-trained puppy",
+        "price": 15000,
+        "address": "Sector 18, Noida, UP",
+        "petCategory": {
+          "_id": "689184f22e52d8218db6e6d2",
+          "name": "Dogs"
+        },
+        "breed": {
+          "_id": "689184f32e52d8218db6e6e1",
+          "name": "Labrador Retriever"
+        },
+        "owner": {
+          "_id": "6893023c3f6cb78b927178e8",
+          "name": "John Doe",
+          "phone": "+91-9876543210"
+        },
+        "images": [
+          {
+            "url": "/uploads/pets/pet-1640995200-123456789.jpg",
+            "isMain": true
+          }
+        ],
+        "isAvailable": true,
+        "isApproved": true
+      }
+    ],
     "pagination": {
       "currentPage": 1,
-      "totalPages": 0,
-      "totalItems": 0,
+      "totalPages": 1,
+      "totalItems": 5,
       "itemsPerPage": 5
+    }
+  }
+}
+```
+
+### Get Nearby Pets (Updated with Fallback)
+```bash
+curl -X GET "http://localhost:3010/api/pets/nearby?latitude=28.6139&longitude=77.2090&radius=10&page=1&limit=5"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Nearby pets fetched successfully",
+  "data": {
+    "pets": [
+      {
+        "_id": "pet_id_1",
+        "title": "Golden Retriever Puppy",
+        "price": 15000,
+        "address": "Sector 18, Noida, UP",
+        "distanceKm": 2.5,
+        "petCategory": {
+          "name": "Dogs"
+        },
+        "owner": {
+          "name": "John Doe",
+          "phone": "+91-9876543210"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 2,
+      "totalItems": 12,
+      "itemsPerPage": 5
+    },
+    "searchRadius": "10 km",
+    "originalRadius": "10 km",
+    "fallbackUsed": false
+  }
+}
+```
+
+### Get Recommended Pets (New Endpoint)
+```bash
+curl -X GET "http://localhost:3010/api/pets/recommended?page=1&limit=5" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Recommended pets fetched successfully",
+  "data": {
+    "pets": [
+      {
+        "_id": "pet_id_2",
+        "title": "Persian Cat",
+        "description": "Beautiful Persian cat, well-groomed",
+        "price": 8000,
+        "isPremium": true,
+        "viewCount": 25,
+        "petCategory": {
+          "name": "Cats"
+        },
+        "companionDetails": {
+          "goodWithKids": true,
+          "temperament": "friendly"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 2,
+      "totalItems": 8,
+      "itemsPerPage": 5
+    },
+    "recommendationBasis": {
+      "userPreferences": true,
+      "locationBased": true,
+      "dairyPetsPreference": false,
+      "companionPetsPreference": true,
+      "fallbackUsed": false
     }
   }
 }
