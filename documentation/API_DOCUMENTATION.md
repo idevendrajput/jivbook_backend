@@ -1056,7 +1056,23 @@ Get user's saved posts count (requires authentication)
 
 ---
 
-## 13. Chat APIs
+## 13. Chat & Socket.IO APIs (OLX-Style Real-time Chat)
+
+**Overview**: Complete real-time chat system with Socket.IO integration for pet inquiries and direct messaging.
+
+### Chat Types:
+- **Pet Inquiry** (`pet_inquiry`) - Buyer-seller communication for pet listings
+- **Direct Chat** (`direct`) - General user-to-user messaging
+- **General** (`general`) - Other purposes
+
+### Key Features:
+- Real-time messaging with Socket.IO
+- File uploads (images/videos up to 50MB)
+- Message read receipts and typing indicators
+- User online/offline status
+- Chat blocking/unblocking
+- Unread message counts
+- Pagination for chats and messages
 
 ### POST /api/chat/create
 Create or get existing chat (requires authentication)
@@ -1081,19 +1097,25 @@ Create or get existing chat (requires authentication)
         "_id": "user id",
         "name": "User Name",
         "email": "user@example.com",
-        "profileImage": "profile image url"
+        "profileImage": "/uploads/profiles/user.jpg"
       }
     ],
     "petListing": {
       "_id": "pet id",
-      "title": "Pet Title",
-      "images": [],
-      "price": 5000,
-      "address": "Pet Address"
+      "title": "Golden Retriever Puppy",
+      "images": [
+        {
+          "url": "/uploads/pets/pet-123.jpg",
+          "isMain": true
+        }
+      ],
+      "price": 15000,
+      "address": "Delhi, India"
     },
-    "chatType": "direct",
+    "chatType": "pet_inquiry",
     "isActive": true,
     "lastMessage": null,
+    "unreadCount": [],
     "createdAt": "2025-01-01T00:00:00.000Z"
   }
 }

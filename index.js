@@ -108,6 +108,10 @@ app.use(endpoints.SAVED_POSTS_BASE, savedPostRoutes);
 const chatRoutes = require('./routes/chatRoutes');
 app.use('/api/chat', chatRoutes);
 
+// Notification routes
+const notificationRoutes = require('./routes/notificationRoutes');
+app.use('/api/notifications', notificationRoutes);
+
 // Create HTTP server
 const server = http.createServer(app);
 
@@ -121,6 +125,22 @@ const io = socketIo(server, {
 
 // Socket.IO chat functionality
 require('./socket/chatSocket')(io);
+
+// Initialize Firebase and Notification services
+try {
+  const firebaseService = require('./services/firebaseService');
+  firebaseService.validateConfig();
+  console.log('Firebase service initialized successfully');
+} catch (error) {
+  console.warn('Firebase initialization warning:', error.message);
+  console.warn('Notification features may not work properly without Firebase configuration');
+}
+
+// Start notification cron jobs
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_CRON === 'true') {
+  const notificationCron = require('./utils/notificationCron');
+  notificationCron.startAllJobs();
+}
 
 // Start the server
 server.listen(PORT, () => {

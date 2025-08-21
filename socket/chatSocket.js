@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Chat = require('../models/Chat');
 const Message = require('../models/Message');
+const notificationService = require('../services/notificationService');
 
 module.exports = function(io) {
   // Middleware for authenticating socket connections
@@ -73,6 +74,26 @@ module.exports = function(io) {
         // Emit message to all participants in the chat
         for (const participantId of chat.participants) {
           io.to(participantId.toString()).emit('newMessage', populatedMessage);
+          
+          // Send push notification to offline participants
+          if (participantId.toString() !== socket.user.id.toString()) {
+            const participant = await User.findById(participantId);
+            if (participant && !participant.isOnline) {
+              // Send notification for new message
+              try {
+                await notificationService.sendEventNotification('new_message', {
+                  recipientId: participantId,
+                  senderName: socket.user.name,
+                  message: content.length > 50 ? content.substring(0, 47) + '...' : content,
+                  chatId: chatId,
+                  senderId: socket.user.id,
+                  systemUserId: null
+                });
+              } catch (notificationError) {
+                console.error('Error sending chat notification:', notificationError);
+              }
+            }
+          }
         }
 
       } catch (error) {
