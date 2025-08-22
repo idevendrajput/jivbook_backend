@@ -10,6 +10,10 @@ class FirebaseService {
 
   init() {
     try {
+      console.log('Firebase initialization temporarily disabled for development');
+      this.initialized = false;
+      // TODO: Re-enable Firebase when proper configuration is available
+      /*
       if (!this.initialized) {
         // Initialize Firebase Admin SDK
         const serviceAccount = {
@@ -34,6 +38,7 @@ class FirebaseService {
         this.initialized = true;
         console.log('Firebase Admin SDK initialized successfully');
       }
+      */
     } catch (error) {
       console.error('Firebase initialization error:', error);
       throw new Error('Failed to initialize Firebase');

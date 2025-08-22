@@ -6,7 +6,8 @@ const {
   getFollowing, 
   acceptFollowRequest, 
   rejectFollowRequest,
-  getPendingRequests 
+  getPendingRequests,
+  getFollowStatus 
 } = require('../controllers/followController');
 const isAuthenticated = require('../middleware/auth');
 
@@ -15,6 +16,7 @@ const router = express.Router();
 // All routes are protected
 router.post('/:userId', isAuthenticated, followUser);
 router.delete('/:userId', isAuthenticated, unfollowUser);
+router.get('/status/:userId', isAuthenticated, getFollowStatus);
 router.get('/:userId/followers', getFollowers);
 router.get('/:userId/following', getFollowing);
 router.put('/request/:followId/accept', isAuthenticated, acceptFollowRequest);

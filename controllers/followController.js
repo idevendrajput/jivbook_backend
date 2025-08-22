@@ -196,3 +196,42 @@ exports.getPendingRequests = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Get follow status between current user and target user
+exports.getFollowStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+    
+    // Get target user info
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if current user is following target user
+    const followRelation = await Follow.findOne({ 
+      follower: currentUserId, 
+      following: userId 
+    });
+    
+    const isFollowing = followRelation && followRelation.status === 'accepted';
+    const isRequested = followRelation && followRelation.status === 'pending';
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        isFollowing,
+        isRequested,
+        followersCount: targetUser.followersCount || 0,
+        followingCount: targetUser.followingCount || 0,
+        isPrivate: targetUser.isPrivate || false
+      }
+    });
+  } catch (err) {
+    res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
+  }
+};
