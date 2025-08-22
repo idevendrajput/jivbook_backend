@@ -52,6 +52,9 @@ router.post('/create', auth, chatController.createOrGetChat);
 // Get user's chats (with pagination)
 router.get('/my-chats', auth, chatController.getUserChats);
 
+// Get total unread messages count
+router.get('/unread-count', auth, chatController.getUnreadCount);
+
 // Get chat messages (with pagination)
 router.get('/:chatId/messages', auth, chatController.getChatMessages);
 

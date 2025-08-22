@@ -334,6 +334,39 @@ const chatController = {
       console.error('Mark as read error:', error);
       res.status(500).json(BaseResponse.error('Server error', error.message));
     }
+  },
+
+  // Get total unread messages count for user
+  getUnreadCount: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get all user's chats
+      const chats = await Chat.find({
+        participants: userId,
+        isActive: true
+      });
+
+      let totalUnreadCount = 0;
+      
+      // Calculate unread count for each chat
+      for (const chat of chats) {
+        const unreadCount = await Message.countDocuments({
+          chat: chat._id,
+          sender: { $ne: userId },
+          readBy: { $ne: userId },
+          isDeleted: false
+        });
+        totalUnreadCount += unreadCount;
+      }
+
+      res.json(BaseResponse.success('Unread count retrieved successfully', {
+        unreadCount: totalUnreadCount
+      }));
+    } catch (error) {
+      console.error('Get unread count error:', error);
+      res.status(500).json(BaseResponse.error('Server error', error.message));
+    }
   }
 };
 
