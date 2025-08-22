@@ -119,11 +119,13 @@ async function populateTestChats() {
         chat.lastMessage = lastMessage._id;
         chat.lastMessageTime = lastMessage.createdAt;
         
-        // Set unread count for test user
-        if (!chat.unreadCount) {
-          chat.unreadCount = new Map();
+        // Set unread count for test user using the correct schema format
+        if (unreadCount > 0) {
+          chat.unreadCount.push({
+            userId: TEST_USER_ID,
+            count: unreadCount
+          });
         }
-        chat.unreadCount.set(TEST_USER_ID, unreadCount);
         
         await chat.save();
         console.log(`Updated chat with ${otherUser.name} - unread count: ${unreadCount}`);
