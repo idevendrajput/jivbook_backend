@@ -15,9 +15,17 @@ exports.createPost = async (req, res) => {
     if (req.files && req.files.length > 0) {
       postData.media = req.files.map((file, index) => {
         const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        
+        // Determine the correct folder path based on destination
+        let folderPath = 'temp'; // Default folder for posts
+        if (file.destination) {
+          const pathParts = file.destination.split('/');
+          folderPath = pathParts[pathParts.length - 1] || 'temp';
+        }
+        
         return {
           type: mediaType,
-          url: `/uploads/${file.filename}`,
+          url: `/uploads/${folderPath}/${file.filename}`,
           order: index
         };
       });
