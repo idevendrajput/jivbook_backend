@@ -10,16 +10,39 @@ const endpoints = require('../endpoints');
 // Authentication route - handles both login and registration
 router.post('/', async (req, res) => {
   try {
-    let { name, email, phone } = req.body;
+    let { name, email, phone, countryCode, phoneNumber } = req.body;
+    console.log('🔐 Auth request received:', { name, email, phone, countryCode, phoneNumber });
     
     // Trim inputs
     name = name ? name.trim() : null;
     email = email ? email.trim().toLowerCase() : undefined;
-    phone = phone ? phone.trim() : undefined;
+    
+    // Handle phone number formats - support both legacy combined and new separate format
+    let finalCountryCode = null;
+    let finalPhoneNumber = null;
+    
+    if (countryCode && phoneNumber) {
+      // New format: separate countryCode and phoneNumber
+      finalCountryCode = countryCode.trim();
+      finalPhoneNumber = phoneNumber.trim();
+    } else if (phone) {
+      // Legacy format: combined phone number like "+919024653150"
+      phone = phone.trim();
+      // Extract country code and phone number from combined format
+      const phoneMatch = phone.match(/^(\+\d{1,4})(\d+)$/);
+      if (phoneMatch) {
+        finalCountryCode = phoneMatch[1]; // e.g., "+91"
+        finalPhoneNumber = phoneMatch[2]; // e.g., "9024653150"
+      } else {
+        const response = BaseResponse.error('Invalid phone number format');
+        return res.status(400).json(response);
+      }
+    }
 
     // Validate inputs
-    if (!name || (!email && !phone)) {
-      const response = BaseResponse.error('Name and either email or phone are required');
+    if (!name || (!email && !finalPhoneNumber)) {
+      console.log('Validation failed:', { name, email, finalPhoneNumber, countryCode, phoneNumber, phone });
+      const response = BaseResponse.error('Name and either email or phone number are required');
       return res.status(400).json(response);
     }
 
@@ -28,8 +51,27 @@ router.post('/', async (req, res) => {
     if (email) {
       user = await User.findOne({ email });
     }
-    if (!user && phone) {
-      user = await User.findOne({ phone });
+    
+    // Check for user by phone number (try both formats for compatibility)
+    if (!user && finalPhoneNumber) {
+      // First try new separate format
+      user = await User.findOne({ 
+        countryCode: finalCountryCode, 
+        phone: finalPhoneNumber 
+      });
+      
+      // If not found, try legacy combined format
+      if (!user) {
+        const combinedPhone = `${finalCountryCode}${finalPhoneNumber}`;
+        user = await User.findOne({ phone: combinedPhone });
+        
+        // If found in legacy format, migrate to new format
+        if (user && !user.countryCode) {
+          user.countryCode = finalCountryCode;
+          user.phone = finalPhoneNumber;
+          await user.save();
+        }
+      }
     }
 
     let isNewUser = false;
@@ -41,7 +83,8 @@ router.post('/', async (req, res) => {
       user = new User({
         name,
         email: email || undefined,
-        phone: phone || undefined,
+        countryCode: finalCountryCode || undefined,
+        phone: finalPhoneNumber || undefined,
         username
       });
 

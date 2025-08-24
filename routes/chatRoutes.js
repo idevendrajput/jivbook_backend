@@ -68,7 +68,12 @@ router.post('/:chatId/send-media', auth, upload.single('media'), async (req, res
       return res.status(400).json({ success: false, message: 'No media file uploaded' });
     }
 
-    const mediaUrl = req.file.filename;
+    // Construct proper media URL for client consumption
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://api.jivbook.com/uploads/chat_media/' 
+      : `http://localhost:${process.env.PORT || 5000}/uploads/chat_media/`;
+    
+    const mediaUrl = baseUrl + req.file.filename;
     const messageType = req.file.mimetype.startsWith('image/') ? 'image' : 'video';
 
     // Add media info to request body

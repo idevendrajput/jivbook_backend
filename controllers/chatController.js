@@ -196,7 +196,7 @@ const chatController = {
   sendMessage: async (req, res) => {
     try {
       const { chatId } = req.params;
-      const { content, messageType = 'text', mediaUrl, parentMessageId } = req.body;
+      const { content, messageType = 'text', mediaUrl, parentMessageId, offerAmount } = req.body;
       const userId = req.user.id;
 
       // Check if user is participant of the chat
@@ -216,6 +216,7 @@ const chatController = {
         content,
         messageType,
         mediaUrl,
+        offerAmount: messageType === 'offer' ? offerAmount : undefined,
         parentMessage: parentMessageId || null
       });
 

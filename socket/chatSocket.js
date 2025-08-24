@@ -43,10 +43,22 @@ module.exports = function(io) {
       socket.to(chatId).emit('typing', { userId: socket.user.id, isTyping });
     });
 
+    // Handle joining a chat room
+    socket.on('joinChat', ({ chatId }) => {
+      console.log(`${socket.user.name} joining chat room: ${chatId}`);
+      socket.join(chatId);
+    });
+
+    // Handle leaving a chat room
+    socket.on('leaveChat', ({ chatId }) => {
+      console.log(`${socket.user.name} leaving chat room: ${chatId}`);
+      socket.leave(chatId);
+    });
+
     // Handle sending a message
     socket.on('sendMessage', async (data) => {
       try {
-        const { chatId, content, messageType, mediaUrl, parentMessageId } = data;
+        const { chatId, content, messageType, mediaUrl, parentMessageId, offerAmount } = data;
 
         const chat = await Chat.findById(chatId);
         if (!chat || !chat.participants.includes(socket.user.id)) {

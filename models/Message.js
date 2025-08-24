@@ -13,7 +13,7 @@ const messageSchema = new mongoose.Schema({
   },
   messageType: {
     type: String,
-    enum: ['text', 'image', 'video'],
+    enum: ['text', 'image', 'video', 'offer'],
     default: 'text'
   },
   content: {
@@ -22,6 +22,10 @@ const messageSchema = new mongoose.Schema({
   },
   mediaUrl: {
     type: String
+  },
+  // For offer messages
+  offerAmount: {
+    type: Number
   },
   // To track who has seen the message
   readBy: [{
