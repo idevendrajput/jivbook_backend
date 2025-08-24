@@ -36,7 +36,13 @@ async function migratePhoneFormat() {
         console.log(`🔄 Migrating user ${user._id} with phone: ${phone}`);
         
         // Extract country code and phone number from combined format
-        const phoneMatch = phone.match(/^(\+\d{1,4})(\d+)$/);
+        // Common country codes: +1, +7, +20, +27, +30, +31, +32, +33, +34, +36, +39, +40, +41, +43, +44, +45, +46, +47, +48, +49, +51, +52, +53, +54, +55, +56, +57, +58, +60, +61, +62, +63, +64, +65, +66, +81, +82, +84, +86, +90, +91, +92, +93, +94, +95, +98, etc.
+        let phoneMatch = phone.match(/^(\+(?:1|7|2[0-79]|3[0-69]|4[0-69]|5[1-8]|6[0-6]|8[1-246]|9[0-58]))(\d+)$/);
+        
+        if (!phoneMatch) {
+          // Fallback: Try to extract common patterns
+          phoneMatch = phone.match(/^(\+(?:91|1|44|33|49|81|86|61|55|52|39|34|7|971|966|965|963|962|960|886|852|853|976|977|992|993|994|995|996|998|380|375|374|373|372|371|370|48|41|43|420|421|385|386|387|389|382|381))(\d+)$/);
+        }
         
         if (phoneMatch) {
           const countryCode = phoneMatch[1]; // e.g., "+91"
